@@ -1,0 +1,42 @@
+# ── 本地运行环境（60+MB 嵌入式 Python，不入库）──
+runtime/
+
+# ── Python 编译缓存 ──
+__pycache__/
+*.py[cod]
+
+# ── 本地生成的 GIS 中间产物 ──
+river-centerline/qgis/
+
+# ── 备份与日志 ──
+*.bak*
+*.log
+
+# ── 系统与编辑器杂项 ──
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+
+# ── 演示 / 截图产物（仅本地留档，不入库）──
+/shot-*.png
+/pelican-bike.*
+/pelican-gif/
+
+# ── river-centerline 生成产物 ──
+/river-centerline/preview.png
+/river-centerline/preview-web.png
+/river-centerline/demo.json
+/river-centerline/river-centerline-viz.html
+
+# ── 设计稿 / 盘点文档 / 旧演示页 ──
+/app-prototype.html
+/dock-workbench.html
+/substrate-deck.html
+/welcome.html
+/index.html
+/gale-shapley-viz.html
+/core-pi-ai-base-inventory.md
+/ui-ux-refactor-map.md
+/pi-ai-base-architecture.svg

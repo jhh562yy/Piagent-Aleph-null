@@ -1,0 +1,1180 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PI Studio · 网页版</title>
+<style>
+:root{
+  --bg:#0e1116; --panel:#141a22; --panel2:#1a212b; --line:#232b37; --sunken:#0a0d12;
+  --ink:#e8eef5; --ink2:#9dabbd; --ink3:#6d7a8c; --sel:#243145;
+  --ok:#43c06a; --warn:#d8a13a; --err:#f06055; --acc:#5b8cff;
+  --user:#2b4a7d; --ai:#1d2635; --tool:#161f29;
+}
+body.light{
+  --bg:#eceff4; --panel:#ffffff; --panel2:#f4f6fa; --line:#dde3ec; --sunken:#e4e8ef;
+  --ink:#0f1722; --ink2:#48566a; --ink3:#76839a; --sel:#dce4f2;
+  --ok:#2f9e52; --warn:#b8860b; --err:#d94135; --acc:#3b6fe0;
+  --user:#dbe6fb; --ai:#f2f5fa; --tool:#eef2f8;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{
+  background:var(--bg);color:var(--ink);
+  font:14px/1.6 "Microsoft YaHei UI","Segoe UI",system-ui,sans-serif;
+  display:flex;flex-direction:column;overflow:hidden;
+}
+button,input,select,textarea{font:inherit;color:inherit}
+button{
+  background:var(--panel2);border:1px solid var(--line);color:var(--ink);
+  padding:5px 11px;border-radius:6px;cursor:pointer;white-space:nowrap;
+}
+button:hover{background:var(--sel)}
+button.acc{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+button.acc:hover{filter:brightness(1.1)}
+button.danger{background:transparent;border-color:var(--err);color:var(--err)}
+button.danger:hover{background:var(--err);color:#fff}
+button:disabled{opacity:.5;cursor:not-allowed}
+input,select,textarea{
+  background:var(--sunken);border:1px solid var(--line);border-radius:6px;padding:6px 8px;
+  outline:none;width:100%;
+}
+input:focus,textarea:focus,select:focus{border-color:var(--acc)}
+code,pre{font-family:Consolas,"Cascadia Mono",monospace;font-size:12.5px}
+pre{background:var(--sunken);border-radius:6px;padding:9px 11px;overflow:auto;margin:6px 0;white-space:pre-wrap;word-break:break-word}
+
+#top{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--panel);border-bottom:1px solid var(--line);flex:0 0 auto}
+#top .brand{font-weight:700;color:var(--acc);letter-spacing:.4px}
+#top .ws{flex:1;min-width:120px;font-size:12.5px;color:var(--ink2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:Consolas,monospace}
+.pill{font-size:12px;color:var(--ink2);background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:3px 10px;white-space:nowrap}
+.pill.ok{color:var(--ok);border-color:var(--ok)}
+.pill.err{color:var(--err);border-color:var(--err)}
+.pill.warn{color:var(--warn);border-color:var(--warn)}
+
+#body{flex:1;display:flex;min-height:0}
+#side{width:250px;flex:0 0 auto;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+#side .hd{display:flex;align-items:center;gap:6px;padding:9px 10px 5px}
+#side .hd b{flex:1;font-size:13px}
+#sessSearch{margin:0 10px 6px}
+#sessList{flex:1;overflow:auto;padding:0 6px 10px}
+.sgroup{font-size:11px;color:var(--ink3);padding:7px 8px 2px;letter-spacing:.5px}
+.sitem{padding:6px 8px;border-radius:6px;cursor:pointer;display:flex;gap:6px;align-items:center}
+.sitem:hover{background:var(--panel2)}
+.sitem.on{background:var(--sel)}
+.sitem .t{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
+.sitem .n{font-size:10.5px;color:var(--ink3)}
+.sitem .x{opacity:0;font-size:12px;color:var(--ink3)}
+.sitem:hover .x{opacity:1}
+.sitem .x:hover{color:var(--err)}
+
+#center{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0}
+#msgs{flex:1;overflow:auto;padding:14px 18px;min-height:0}
+.msg{display:flex;gap:10px;margin:0 0 14px}
+.msg .who{flex:0 0 62px;font-size:11.5px;color:var(--ink3);padding-top:3px;text-align:right}
+.msg .bd{flex:1;min-width:0}
+.bub{border-radius:9px;padding:9px 12px;background:var(--ai);overflow-wrap:anywhere}
+.msg.u .bub{background:var(--user)}
+.bub.plain{white-space:pre-wrap}
+.msg .meta{font-size:11px;color:var(--ink3);margin-top:4px}
+.toolcard{border:1px solid var(--line);border-radius:8px;background:var(--tool);margin:0 0 10px;overflow:hidden}
+.toolcard .th{display:flex;align-items:center;gap:8px;padding:6px 10px;cursor:pointer;font-family:Consolas,monospace;font-size:12.5px}
+.toolcard .th .nm{color:var(--warn);font-weight:700}
+.toolcard .th .st{margin-left:auto;font-size:11px}
+.toolcard .tb{display:none;border-top:1px solid var(--line);padding:8px 10px}
+.toolcard.open .tb{display:block}
+.toolcard pre{margin:4px 0 0;max-height:340px}
+.think{border-left:2px solid var(--line);padding-left:10px;color:var(--ink3);font-size:12.5px;margin:0 0 8px;white-space:pre-wrap;max-height:150px;overflow:auto}
+.thinkbar{display:none;align-items:center;gap:8px;margin:-4px 0 8px}
+.thinkbar button{font-size:11.5px;padding:2px 9px;line-height:1.6}
+.thinkbar .trstate{font-size:11px;color:var(--ink3)}
+.thinkzh{display:none;border-left:2px solid var(--acc);background:var(--sunken);padding:7px 10px;margin:0 0 9px;font-size:12.5px;max-height:240px;overflow:auto;border-radius:0 6px 6px 0}
+.thinkzh .pair{margin:0 0 7px}
+.thinkzh .pair:last-child{margin-bottom:0}
+.thinkzh .en{color:var(--ink3);white-space:pre-wrap}
+.thinkzh .zh{color:var(--ink);white-space:pre-wrap}
+.thinkzh .zh:before{content:'\21b3 ';color:var(--acc)}
+.notice{font-size:12.5px;color:var(--ink3);padding:3px 0}
+.notice.err{color:var(--err);font-weight:600}
+.hint{color:var(--ink3);font-size:13px}
+
+#composer{flex:0 0 auto;border-top:1px solid var(--line);background:var(--panel);padding:9px 12px}
+#input{resize:none;height:76px;line-height:1.55}
+#cbar{display:flex;align-items:center;gap:8px;margin-top:7px}
+#cbar .grow{flex:1}
+#cbar .tip{font-size:11.5px;color:var(--ink3)}
+
+#right{width:400px;flex:0 0 auto;background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+#tabs{display:flex;flex-wrap:wrap;gap:2px;padding:7px 8px 0;border-bottom:1px solid var(--line)}
+#tabs button{border-radius:6px 6px 0 0;border-bottom-color:transparent;background:transparent;font-size:12.5px;padding:5px 10px}
+#tabs button.on{background:var(--panel2);border-color:var(--line);border-bottom-color:var(--panel2);font-weight:600}
+.tabpane{display:none;padding:11px 12px;overflow:auto;flex:1;min-height:0}
+.tabpane.on{display:block}
+.row{display:flex;gap:8px;align-items:center;margin:6px 0}
+.row label{flex:0 0 132px;font-size:12.5px;color:var(--ink2)}
+.row .grow{flex:1}
+.fld{margin:9px 0}
+.fld .k{font-size:12px;color:var(--ink2);margin-bottom:3px}
+.box{border:1px solid var(--line);border-radius:8px;padding:9px 10px;margin:9px 0;background:var(--panel2)}
+.box h4{margin:0 0 6px;font-size:13px}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th,td{text-align:left;padding:5px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--ink2);font-weight:600;font-size:11.5px}
+tr.sel{background:var(--sel)}
+.diff{font-family:Consolas,monospace;font-size:12.5px;white-space:pre-wrap;max-height:320px;overflow:auto;background:var(--sunken);border-radius:6px;padding:8px}
+.diff .a{color:var(--ok)}
+.diff .d{color:var(--err)}
+.diff .h{color:var(--acc)}
+#logbox{font-family:Consolas,monospace;font-size:12px;white-space:pre-wrap;max-height:520px;overflow:auto;background:var(--sunken);border-radius:6px;padding:8px}
+#status{flex:0 0 auto;display:flex;gap:12px;align-items:center;padding:5px 12px;background:var(--panel);border-top:1px solid var(--line);font-size:12px;color:var(--ink2)}
+#status .grow{flex:1}
+#bar{height:6px;background:var(--panel2);border:1px solid var(--line);border-radius:4px;overflow:hidden;width:150px}
+#bar i{display:block;height:100%;width:0;background:var(--acc)}
+
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
+#modal.on{display:flex}
+#modalBox{background:var(--panel);border:1px solid var(--line);border-radius:12px;width:min(720px,100%);max-height:90vh;display:flex;flex-direction:column;overflow:hidden}
+#modalBox h3{margin:0;padding:13px 16px 6px;font-size:15px}
+#modalBox .sub{padding:0 16px;font-size:12.5px;color:var(--ink3)}
+#modalBox .warn{padding:6px 16px 0;color:var(--warn);font-size:12.5px;white-space:pre-wrap;font-weight:600}
+#mArgs{margin:10px 16px;height:230px;font-family:Consolas,monospace;font-size:12.5px}
+#modalBox .bar{display:flex;gap:8px;align-items:center;padding:0 16px 14px}
+#mErr{color:var(--err);font-size:12px;flex:1}
+#qa{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:60;padding:20px}
+#qa.on{display:flex}
+#qaBox{background:var(--panel);border:1px solid var(--line);border-radius:12px;width:min(760px,100%);max-height:90vh;display:flex;flex-direction:column;overflow:hidden}
+#qaBox h3{margin:0;padding:13px 16px 6px;font-size:15px}
+#qaBox .sub{padding:0 16px;font-size:12.5px;color:var(--ink3)}
+#qList{padding:10px 16px;overflow:auto;flex:1}
+.qcard{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:10px 12px;margin-bottom:10px}
+.qcard .qq{font-weight:600;font-size:13.5px;margin-bottom:6px}
+.qcard .opt{display:flex;gap:8px;align-items:flex-start;padding:3px 0;cursor:pointer;font-size:13px}
+.qcard .opt input{margin-top:3px}
+.qcard .od{color:var(--ink3);font-size:12px}
+.qcard .qin{width:100%;margin-top:6px;font-size:12.5px}
+#qaBox .bar{display:flex;gap:8px;align-items:center;padding:0 16px 14px}
+.spin{display:inline-block;width:11px;height:11px;border:2px solid var(--ink3);border-top-color:transparent;border-radius:50%;animation:sp .8s linear infinite;vertical-align:-1px}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media (max-width:1180px){#right{width:330px}}
+@media (max-width:980px){#side{display:none}#right{display:none}}
+</style>
+</head>
+<body>
+
+<div id="top">
+  <span class="brand">PI Studio</span>
+  <span class="pill" id="ver">…</span>
+  <span class="ws" id="ws" title="">工作区 …</span>
+  <select id="modelSel" style="width:210px"></select>
+  <button id="btnApplyModel">应用</button>
+  <button id="btnProbe">探测</button>
+  <span class="pill" id="conn">未探测</span>
+  <span class="pill" id="toks">tokens 0</span>
+  <button id="btnTheme" title="切换明暗">◐</button>
+  <button id="btnShutdown" class="danger" title="停止后端">停止后端</button>
+</div>
+
+<div id="body">
+  <aside id="side">
+    <div class="hd"><b>会话</b><button id="btnNew" title="新建会话">＋</button></div>
+    <div style="padding:0 10px 6px"><input id="sessSearch" placeholder="搜索会话…"></div>
+    <div id="sessList"></div>
+  </aside>
+
+  <main id="center">
+    <div id="msgs"></div>
+    <div id="composer">
+      <textarea id="input" placeholder="直接说需求即可，模型会自己调用本机工具（Enter 发送 · Shift+Enter 换行）"></textarea>
+      <div id="cbar">
+        <button id="btnSend" class="acc">发送</button>
+        <button id="btnClear">清空对话</button>
+        <button id="btnExport">导出 MD</button>
+        <label class="tip" title="一轮回答结束后，自动调用插件 ms-translate（微软 Bing 网页端）把思考里的英文译成中文，显示在思考块下方" style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="autoTr" checked style="width:auto;margin:0">思考自动译中</label>
+        <span class="tip" id="tip"></span>
+        <span class="grow"></span>
+        <span class="tip">/help 查看斜杠命令 · 右键消息可回滚</span>
+      </div>
+    </div>
+  </main>
+
+  <aside id="right">
+    <div id="tabs">
+      <button data-tab="tools" class="on">工具</button>
+      <button data-tab="models">模型</button>
+      <button data-tab="changes">变更</button>
+      <button data-tab="runtime">运行时</button>
+      <button data-tab="console">控制台</button>
+      <button data-tab="settings">设置</button>
+      <button data-tab="about">关于</button>
+    </div>
+
+    <div class="tabpane on" id="pane-tools">
+      <div class="fld"><div class="k">选择工具（点击直接在本机执行）</div>
+        <select id="toolSel"></select></div>
+      <div class="box" id="toolDesc"></div>
+      <div id="toolForm"></div>
+      <div class="row"><button id="btnRunTool" class="acc">运行</button><button id="btnClearToolOut">清空输出</button></div>
+      <pre id="toolOut" style="max-height:300px">尚未运行工具。</pre>
+    </div>
+
+    <div class="tabpane" id="pane-models">
+      <div class="fld"><div class="k">配置档案</div>
+        <div class="row"><select id="profSel" class="grow"></select><button id="btnUseProf">载入</button></div></div>
+      <div class="fld"><div class="k">Base URL（OpenAI 兼容）</div><input id="mBase"></div>
+      <div class="fld"><div class="k">API Key（留空表示不修改）</div><input id="mKey" type="password" placeholder="已配置：…"></div>
+      <div class="fld"><div class="k">模型</div><input id="mModel"></div>
+      <div class="row">
+        <button id="btnSaveModel" class="acc">保存并应用</button>
+        <button id="btnImportHost">从 NmoIAIgenT 导入</button>
+        <button id="btnDetectLocal">扫本机端口</button>
+      </div>
+      <div class="box" id="metaBox">模型元数据：—</div>
+      <div class="box">
+        <h4>端点返回的模型</h4>
+        <div id="modelList" class="hint">尚未探测</div>
+      </div>
+      <div class="row"><button id="btnCompact">压缩上下文</button><span class="hint" id="ctxMini"></span></div>
+    </div>
+
+    <div class="tabpane" id="pane-changes">
+      <div class="row"><b style="flex:1">文件变更检查点</b><span class="hint" id="cpCount"></span></div>
+      <table><thead><tr><th>工具</th><th>文件</th><th>字节</th><th>状态</th></tr></thead><tbody id="cpBody"></tbody></table>
+      <div class="row" style="margin-top:9px">
+        <button id="btnRbOne" class="danger">回滚选中</button>
+        <button id="btnRbAll" class="danger">回滚全部</button>
+        <button id="btnCpRefresh">刷新</button>
+      </div>
+      <div class="diff" id="diffBox">选中一行查看 diff。</div>
+    </div>
+
+    <div class="tabpane" id="pane-runtime">
+      <div class="box" id="rtBox">—</div>
+      <div class="box"><h4>本次会话的工具调用</h4>
+        <table><thead><tr><th>工具</th><th>结果</th><th>耗时</th></tr></thead><tbody id="rtBody"></tbody></table>
+      </div>
+    </div>
+
+    <div class="tabpane" id="pane-console">
+      <div class="row"><button id="btnLogRefresh">刷新</button>
+        <select id="logLevel" style="width:110px"><option value="">全部</option><option>info</option><option>warn</option><option>error</option></select>
+        <span class="hint" id="logInfo"></span></div>
+      <div id="logbox"></div>
+    </div>
+
+    <div class="tabpane" id="pane-settings">
+      <div class="row"><label>温度</label><input id="sTemp" class="grow"></div>
+      <div class="row"><label>单轮最大步数</label><input id="sSteps" class="grow"></div>
+      <div class="row"><label>模型超时（秒）</label><input id="sTimeout" class="grow"></div>
+      <div class="row"><label>命令超时（秒）</label><input id="sShell" class="grow"></div>
+      <div class="row"><label>最大输出 tokens</label><input id="sMaxOut" class="grow"></div>
+      <div class="row"><label>网络重试次数</label><input id="sRetries" class="grow"></div>
+      <div class="row"><label>HTTP 代理</label><input id="sProxy" class="grow" placeholder="留空跟随系统"></div>
+      <div class="row"><label>输入单价 元/千token</label><input id="sPin" class="grow"></div>
+      <div class="row"><label>输出单价 元/千token</label><input id="sPout" class="grow"></div>
+      <div class="box">
+        <label class="row"><input type="checkbox" id="sSandbox" style="width:auto;flex:0 0 auto"> 沙箱：文件与命令限制在工作区内</label>
+        <label class="row"><input type="checkbox" id="sApprove" style="width:auto;flex:0 0 auto"> 写入 / 执行类工具需要审批</label>
+        <label class="row"><input type="checkbox" id="sTools" style="width:auto;flex:0 0 auto"> 允许模型调用工具</label>
+        <label class="row"><input type="checkbox" id="sAutoCp" style="width:auto;flex:0 0 auto"> 上下文接近上限时自动压缩</label>
+        <label class="row"><input type="checkbox" id="sAutoTitle" style="width:auto;flex:0 0 auto"> 首轮结束后自动命名会话</label>
+        <label class="row"><input type="checkbox" id="sQA" style="width:auto;flex:0 0 auto"> 问答（QA）：需求有歧义时先用 ask_user 出选项问清</label>
+        <div class="row"><label>单轮问题上限</label><input id="sQAMax" class="grow" style="max-width:80px"></div>
+      </div>
+      <div class="fld"><div class="k">系统提示词</div><textarea id="sSys" style="height:130px"></textarea></div>
+      <div class="row"><button id="btnSaveCfg" class="acc">保存设置</button>
+        <button id="btnWorkspace">修改工作区…</button>
+        <button id="btnSelftest">运行自检</button></div>
+      <pre id="stOut" style="max-height:280px"></pre>
+    </div>
+
+    <div class="tabpane" id="pane-about">
+      <div class="box" id="aboutBox">—</div>
+    </div>
+  </aside>
+</div>
+
+<div id="status">
+  <span id="stState">就绪</span>
+  <span class="grow"></span>
+  <span id="stCtx" class="hint"></span>
+  <span id="bar"><i></i></span>
+  <span id="stTok" class="hint"></span>
+</div>
+
+<div id="modal"><div id="modalBox">
+  <h3 id="mTitle">需要审批</h3>
+  <div class="sub" id="mDesc"></div>
+  <div class="warn" id="mWarn"></div>
+  <textarea id="mArgs" spellcheck="false"></textarea>
+  <div class="bar">
+    <button id="mAllow" class="acc">允许执行</button>
+    <button id="mDeny" class="danger">拒绝</button>
+    <button id="mAlways">本会话始终允许</button>
+    <span id="mErr"></span>
+  </div>
+</div></div>
+
+<div id="qa"><div id="qaBox">
+  <h3 id="qTitle">需要你的选择（需求澄清）</h3>
+  <div class="sub" id="qIntro"></div>
+  <div id="qList"></div>
+  <div class="bar">
+    <button id="qSend" class="acc">提交答案</button>
+    <button id="qSkip">跳过，按你的判断做</button>
+    <span id="qErr" class="hint"></span>
+  </div>
+</div></div>
+
+<script>
+const TOK = new URLSearchParams(location.search).get('t') || '';
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+let S = { state:null, sid:null, session:null, cps:[], runId:null, busy:false, pending:null, ask:null, allow:{}, selCp:null, tick:0 };
+
+function api(path, body){
+  const opt = { headers:{ 'X-PI-Token':TOK } };
+  if (body !== undefined){ opt.method='POST'; opt.headers['Content-Type']='application/json'; opt.body=JSON.stringify(body); }
+  return fetch(path + (path.includes('?')?'&':'?') + 't=' + encodeURIComponent(TOK), opt).then(r => r.json());
+}
+
+function md(src){
+  let t = esc(src);
+  const blocks = [];
+  t = t.replace(/```([a-zA-Z0-9_+-]*)\n?([\s\S]*?)```/g, (m, lang, code) => {
+    blocks.push('<pre>' + code.replace(/\n$/,'') + '</pre>');
+    return '\u0000B' + (blocks.length-1) + '\u0000';
+  });
+  t = t.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+  t = t.replace(/\*\*([^*\n]+)\*\*/g, '<b>$1</b>');
+  t = t.replace(/^### (.*)$/gm, '<b>$1</b>');
+  t = t.replace(/^## (.*)$/gm, '<b>$1</b>');
+  t = t.replace(/(^|\n)([-*·]) /g, '$1• ');
+  t = t.replace(/\u0000B(\d+)\u0000/g, (m,i) => blocks[+i]);
+  return t;
+}
+function stripMarks(s){
+  s = String(s||'');
+  if (s.indexOf('DSML') < 0) return s;
+  s = s.replace(/<[^>]*DSML[^>]*>\s*invoke\b[^>]*>[\s\S]*?<\/[^>]*DSML[^>]*>\s*invoke\s*>/gi, '');
+  s = s.replace(/<\/?[^>]*DSML[^>]*>\s*(?:tool_calls|function_calls)\s*>/gi, '');
+  s = s.replace(/<\/?[^>]*DSML[^>]*>/gi, '');
+  return s.replace(/\n{3,}/g, '\n\n').trim();
+}
+function bubbleBody(text){
+  text = stripMarks(text);
+  const hasBlock = /```|^\s*[-*] |\*\*/.test(text);
+  return hasBlock ? md(text) : ('<div class="plain">' + esc(text) + '</div>');
+}
+
+function setState(txt, cls){ const e=$('stState'); e.textContent = txt; e.className = cls||''; }
+function toast(txt){ $('tip').textContent = txt; $('stState').textContent = txt; }
+
+async function boot(){
+  const h = await api('/api/health');
+  if (!h.ok){ renderFatal(h.error || '后端无响应'); return; }
+  $('ver').textContent = 'v' + h.version + ' · py' + h.python;
+  $('ws').textContent = h.workspace || '';
+  $('ws').title = h.workspace || '';
+  setConn(h.meta ? true : false);
+  await loadState();
+  await probe(false);
+  await openFirst();
+  $('aboutBox').innerHTML = `
+    <h4>PI Studio ${esc(h.version)} · 网页版</h4>
+    <div class="hint">这是一个真正的后端 + 网页客户端：页面只是壳，所有能力（模型请求、命令执行、文件读写、检查点回滚）都发生在你机器上的 Python 进程里。</div>
+    <table style="margin-top:9px">
+      <tr><th>Python</th><td>${esc(h.python)}</td></tr>
+      <tr><th>数据目录</th><td>${esc(h.home)}</td></tr>
+      <tr><th>工作区</th><td>${esc(h.workspace)}</td></tr>
+      <tr><th>端点</th><td>${esc(h.provider.base_url)}</td></tr>
+      <tr><th>模型</th><td>${esc(h.provider.model)}</td></tr>
+      <tr><th>密钥</th><td>${esc(h.provider.key)}</td></tr>
+      <tr><th>工具</th><td>${h.tools} 个</td></tr>
+    </table>
+    <div class="hint" style="margin-top:9px">命令行也能验证：<code>python pistudio.py --selftest</code> / <code>--ctx</code> / <code>--changes</code></div>`;
+}
+
+function renderFatal(msg){
+  document.getElementById('msgs').innerHTML =
+    '<div class="bub" style="border:1px solid var(--err);color:var(--err)">后端返回错误：' + esc(msg) +
+    '<br><br>请回到启动器窗口确认后端仍在运行，并使用它打印的完整网址（含 ?t=令牌）打开本页。</div>';
+  setState('后端异常');
+}
+
+function setConn(ok){
+  const e = $('conn');
+  if (ok === null){ e.textContent='未探测'; e.className='pill'; }
+  else if (ok){ e.textContent='已连接'; e.className='pill ok'; }
+  else { e.textContent='未连接'; e.className='pill err'; }
+}
+
+async function loadState(){
+  S.state = await api('/api/state');
+  const st = S.state;
+  $('ws').textContent = st.workspace || '';
+  $('ws').title = st.workspace || '';
+  const p = st.provider || {};
+  $('mBase').value = p.base_url || '';
+  $('mModel').value = p.model || '';
+  $('mKey').placeholder = '已配置：' + (p.api_key_masked || '（未设置）');
+  const opts = (p.models && p.models.length ? p.models : [p.model]).filter(Boolean);
+  $('modelSel').innerHTML = opts.map(m => `<option ${m===p.model?'selected':''}>${esc(m)}</option>`).join('');
+  $('profSel').innerHTML = (st.profiles||[]).map(x => `<option>${esc(x.name)}</option>`).join('');
+  const prefs = st.prefs || {};
+  $('sTemp').value = prefs.temperature; $('sSteps').value = prefs.max_steps;
+  $('sTimeout').value = prefs.timeout; $('sShell').value = prefs.shell_timeout;
+  $('sMaxOut').value = prefs.max_output_tokens; $('sRetries').value = prefs.retries;
+  $('sProxy').value = prefs.proxy || ''; $('sPin').value = prefs.price_in; $('sPout').value = prefs.price_out;
+  $('sSandbox').checked = !!prefs.sandbox; $('sApprove').checked = !!prefs.approve_mutating;
+  $('sTools').checked = !!prefs.enable_tools; $('sAutoCp').checked = !!prefs.auto_compact;
+  $('sAutoTitle').checked = !!prefs.auto_title;
+  $('sQA').checked = !!prefs.qa_first; $('sQAMax').value = prefs.qa_max || 4;
+  $('sSys').value = st.system_prompt || '';
+  $('toolSel').innerHTML = (st.tools||[]).map(t => `<option value="${esc(t.name)}">${esc(t.name)} · ${esc(t.group)}${t.mutating?' ⚠':''}</option>`).join('');
+  renderTools();
+  renderSessions();
+  const meta = (st.model_meta||{})[p.model] || {};
+  $('metaBox').innerHTML = `<b>${esc(p.model||'未选模型')}</b><br>窗口 ${meta.contextWindow||'—'} tokens` +
+    ` · 最大输出 ${meta.maxOutput||'未标注'} · 推理模型 ${meta.reasoning?'是':'否'}${meta.verifiedBy?'（'+esc(meta.verifiedBy)+'）':''}`;
+  $('ctxMini').textContent = `会话已用 ${st.ctx.used} / ${st.ctx.limit}`;
+  $('stTok').textContent = 'tokens ' + (st.ctx.used||0);
+  $('top').querySelector('#toks').textContent = 'tokens ' + (st.ctx.used||0);
+  const bar = $('bar').firstElementChild;
+  bar.style.width = Math.min(100, (st.ctx.ratio||0)*100).toFixed(1) + '%';
+  $('stCtx').textContent = `上下文 ${st.ctx.used} / ${st.ctx.limit}（${st.ctx.source}）`;
+}
+
+function renderSessions(){
+  const q = ($('sessSearch').value||'').toLowerCase();
+  const list = (S.state?.sessions||[]).filter(s => !q || (s.title||'').toLowerCase().includes(q));
+  const groups = {};
+  const day = (t)=>{ const d=new Date((t||0)*1000), n=new Date();
+    if (d.toDateString()===n.toDateString()) return '今天';
+    const y=new Date(Date.now()-86400000);
+    if (d.toDateString()===y.toDateString()) return '昨天';
+    return d.toLocaleDateString(); };
+  list.forEach(s => { const k=day(s.updated); (groups[k]=groups[k]||[]).push(s); });
+  let html='';
+  for (const k in groups){
+    html += `<div class="sgroup">${esc(k)}</div>`;
+    groups[k].sort((a,b)=>(b.updated||0)-(a.updated||0)).forEach(s=>{
+      html += `<div class="sitem ${s.id===S.sid?'on':''}" data-id="${esc(s.id)}">
+        <span class="t">${esc(s.title||'会话')}</span>
+        <span class="n">${s.messages}</span>
+        <span class="x" title="删除" data-del="${esc(s.id)}">✕</span></div>`;
+    });
+  }
+  $('sessList').innerHTML = html || '<div class="hint" style="padding:10px">没有会话</div>';
+}
+
+$('sessList').addEventListener('click', async e => {
+  const del = e.target.getAttribute('data-del');
+  if (del){ if (!confirm('删除这个会话？')) return;
+    await api('/api/session/delete', { id: del });
+    if (S.sid===del) S.sid=null;
+    await loadState(); await openFirst(); return; }
+  const item = e.target.closest('.sitem'); if (!item) return;
+  await openSession(item.getAttribute('data-id'));
+});
+$('sessSearch').addEventListener('input', renderSessions);
+
+async function openFirst(){
+  const list = S.state?.sessions||[];
+  if (list.length) await openSession(list[0].id);
+}
+async function openSession(id){
+  S.sid = id;
+  const r = await api('/api/session?id=' + encodeURIComponent(id));
+  if (!r.ok){ toast(r.error); return; }
+  S.session = r.session; S.cps = r.checkpoints || [];
+  renderSessions(); renderMsgs(); renderChanges(); renderRuntime();
+  await loadConsole();
+}
+
+function msgOf(m){
+  const role = m.role;
+  if (role==='user') return '你';
+  if (role==='tool') return '工具';
+  return 'PI';
+}
+function renderMsgs(){
+  const box = $('msgs');
+  const msgs = S.session?.messages || [];
+  if (!msgs.length){
+    box.innerHTML = `<div class="hint">
+      <p>这个会话还没有消息。直接输入即可。</p>
+      <p>· 模型会自己决定调哪个本机工具，过程以工具卡形式显示在这里。<br>
+         · 写入类工具会弹审批框，弹框里的 JSON <b>可以直接改</b>，改完点「允许执行」。<br>
+         · 每次写入都会在右侧「变更」面板留一条检查点，随时一键回滚。<br>
+         · 输入 <code>/help</code> 查看斜杠命令。</p></div>`;
+    return;
+  }
+  let html = '';
+  let thinkBuf = '';
+  msgs.forEach((m, i) => {
+    if (m.role === 'user'){
+      html += `<div class="msg u" data-i="${i}"><div class="who">你</div><div class="bd"><div class="bub">${bubbleBody(String(m.content||''))}</div></div></div>`;
+    } else if (m.role === 'assistant'){
+      const txt = String(m.content||'');
+      if (txt) html += `<div class="msg a" data-i="${i}"><div class="who">PI</div><div class="bd"><div class="bub">${bubbleBody(txt)}</div>
+        <div class="meta">${m.steps?('步数 '+m.steps+' · '):''}${(m.usage&&m.usage.total_tokens?('tokens '+m.usage.total_tokens):'')}</div></div></div>`;
+      (m.tool_calls||[]).forEach(c=>{
+        html += `<div class="msg a" data-i="${i}"><div class="who"></div><div class="bd"><div class="notice">↳ 调用 ${esc(c.function&&c.function.name||'')}</div></div></div>`;
+      });
+    } else if (m.role === 'tool'){
+      const ok = m.ok !== false;
+      html += `<div class="msg a" data-i="${i}"><div class="who">工具</div><div class="bd">
+        <div class="toolcard" data-tool="${i}">
+          <div class="th"><span class="nm">${esc(m.name||'tool')}</span>
+            <span class="st" style="color:${ok?'var(--ok)':'var(--err)'}">${ok?'✔':'✘'} ${m.ms||0}ms</span></div>
+          <div class="tb"><div class="hint">参数</div><pre>${esc(JSON.stringify(m.args||{},null,1))}</pre>
+            <div class="hint">输出</div><pre>${esc(String(m.content||''))}</pre></div>
+        </div></div></div>`;
+    }
+  });
+  box.innerHTML = html;
+  box.scrollTop = box.scrollHeight;
+}
+$('msgs').addEventListener('click', e => {
+  const th = e.target.closest('.toolcard .th'); if (!th) return;
+  th.parentElement.classList.toggle('open');
+});
+$('msgs').addEventListener('contextmenu', e => {
+  const m = e.target.closest('.msg'); if (!m) return;
+  e.preventDefault();
+  const i = +m.getAttribute('data-i');
+  const msgs = S.session?.messages || [];
+  const role = msgs[i]?.role;
+  const content = (i>=0 && i<msgs.length) ? String(msgs[i].content||'') : '';
+  const what = prompt('输入 1 = 丢弃这条及其后的全部内容；输入 2 = 丢弃这条之后的回答，并把这条消息重新发一遍：\n\n[' +
+    role + '] ' + content.slice(0,120), '1');
+  if (what === null) return;
+  if (what === '2' && role === 'user'){
+    (async () => { await api('/api/session/truncate', { id:S.sid, index:i }); await openSession(S.sid);
+      $('input').value = content; send(); })();
+    return;
+  }
+  (async () => { await api('/api/session/truncate', { id:S.sid, index:i }); await openSession(S.sid);
+    toast('已丢弃第 ' + i + ' 条及其后的内容'); })();
+});
+
+function renderTools(){
+  const t = (S.state?.tools||[]).find(x => x.name === $('toolSel').value) || (S.state?.tools||[])[0];
+  if (!t) return;
+  $('toolDesc').innerHTML = `<b>${esc(t.name)}</b> <span class="hint">[${esc(t.group)}]</span><br>${esc(t.desc)}${t.mutating?'<br><span style="color:var(--warn)">⚠ 执行前需要审批</span>':''}`;
+  const props = (t.parameters&&t.parameters.properties)||{};
+  const req = (t.parameters&&t.parameters.required)||[];
+  let html='';
+  Object.keys(props).forEach(k=>{
+    const sp = props[k]||{}, typ = sp.type||'string';
+    const label = k + (req.includes(k)?' *':'');
+    if (sp.enum) html += `<div class="fld"><div class="k">${esc(label)}</div><select data-arg="${esc(k)}" data-typ="enum">${sp.enum.map(v=>`<option>${esc(v)}</option>`).join('')}</select></div>`;
+    else if (typ==='boolean') html += `<div class="fld"><label class="row"><input type="checkbox" data-arg="${esc(k)}" data-typ="boolean" style="width:auto;flex:0 0 auto"> ${esc(label)}</label></div>`;
+    else if (['content','code','old','new','text'].includes(k)) html += `<div class="fld"><div class="k">${esc(label)}</div><textarea data-arg="${esc(k)}" data-typ="${typ}" style="height:90px"></textarea></div>`;
+    else html += `<div class="fld"><div class="k">${esc(label)}</div><input data-arg="${esc(k)}" data-typ="${typ}"></div>`;
+  });
+  $('toolForm').innerHTML = html || '<div class="hint">该工具不需要参数。</div>';
+}
+$('toolSel').addEventListener('change', renderTools);
+
+$('btnRunTool').onclick = async () => {
+  const name = $('toolSel').value;
+  const args = {};
+  document.querySelectorAll('#toolForm [data-arg]').forEach(el=>{
+    const k = el.getAttribute('data-arg'), typ = el.getAttribute('data-typ');
+    let v = typ==='boolean' ? el.checked : el.value;
+    if (typ==='integer') v = parseInt(v||'0',10)||0;
+    else if (typ==='number') v = parseFloat(v||'0')||0;
+    if (v==='' && typ!=='boolean') return;
+    args[k]=v;
+  });
+  $('toolOut').textContent = '运行中…';
+  setState('执行 ' + name + ' …');
+  const r = await api('/api/tool', { name, args });
+  const res = r.result || {};
+  $('toolOut').textContent = `[${name}] ${res.ok?'✔ 成功':'✘ 失败'} ${res.ms||0}ms\n参数：${JSON.stringify(args)}\n\n${res.text||''}`;
+  setState(name + (res.ok?' 成功':' 失败'));
+};
+$('btnClearToolOut').onclick = ()=>{ $('toolOut').textContent='尚未运行工具。'; };
+
+async function probe(announce){
+  if (announce){ $('conn').textContent='探测中…'; $('conn').className='pill warn'; }
+  const r = await api('/api/probe', {});
+  const p = r.probe || {};
+  setConn(p.ok ? true : false);
+  $('modelList').innerHTML = p.ok
+    ? `<div class="hint">${p.ms}ms · ${p.models.length} 个模型（双击使用）</div>` +
+      p.models.map(m=>`<div style="cursor:pointer;padding:3px 0" data-m="${esc(m)}">· ${esc(m)}</div>`).join('')
+    : `<span style="color:var(--err)">${esc(p.error||'失败')}</span>`;
+  if (p.ok && p.models.length){
+    $('modelSel').innerHTML = p.models.map(m=>`<option ${m===$('mModel').value?'selected':''}>${esc(m)}</option>`).join('');
+    if (!$('mModel').value) $('mModel').value = p.models[0];
+  }
+  return p;
+}
+$('btnProbe').onclick = ()=>probe(true);
+$('modelList').addEventListener('click', e=>{
+  const m = e.target.getAttribute('data-m'); if (!m) return;
+  $('mModel').value = m; $('modelSel').value = m; $('btnSaveModel').click();
+});
+$('btnApplyModel').onclick = async ()=>{ await api('/api/settings',{ provider:{ model: $('modelSel').value } }); await loadState(); toast('模型已切换：'+$('modelSel').value); };
+$('btnSaveModel').onclick = async ()=>{
+  const body = { provider:{ base_url:$('mBase').value.trim(), model:$('mModel').value.trim() } };
+  if ($('mKey').value) body.provider.api_key = $('mKey').value;
+  await api('/api/settings', body);
+  await loadState(); await probe(false);
+  toast('已保存并应用');
+  setConn(true);
+};
+$('btnImportHost').onclick = async ()=>{
+  const r = await api('/api/import_host');
+  if (!r.ok){ toast('导入失败：'+(r.error||'')); return; }
+  await loadState(); await probe(false);
+  toast('已从 NmoIAIgenT 导入：' + (r.provider.name||'') + ' / ' + (r.provider.model||''));
+};
+$('btnDetectLocal').onclick = async ()=>{
+  const r = await api('/api/detect_local');
+  const eps = r.endpoints||[];
+  $('modelList').innerHTML = eps.length
+    ? eps.map(x=>`<div style="cursor:pointer;padding:3px 0" data-base="${esc(x.base_url)}" data-m="${esc(x.model)}">· ${esc(x.name)} — ${esc(x.base_url)}（${x.models.length} 个模型）</div>`).join('')
+    : '<span style="color:var(--warn)">本机常用端口没有发现模型服务</span>';
+  toast(eps.length ? ('发现 ' + eps.length + ' 个本机端点，点击即填入') : '未发现本机端点');
+  $('modelList').onclick = ev => {
+    const b = ev.target.getAttribute('data-base'); if (!b) return;
+    $('mBase').value = b; $('mModel').value = ev.target.getAttribute('data-m')||''; $('mKey').value='';
+    $('btnSaveModel').click();
+  };
+};
+$('profSel').onchange = ()=>{
+  const p = (S.state?.profiles||[])[+$('profSel').selectedIndex];
+  if (!p) return;
+  $('mBase').value = p.base_url||''; $('mModel').value = p.model||'';
+  $('mKey').value = ''; $('mKey').placeholder = p.has_key ? '该档案已存有密钥，留空即沿用' : '该档案没有密钥';
+  toast('已载入档案：'+p.name+'（点「保存并应用」生效）');
+};
+$('btnUseProf').onclick = ()=>$('profSel').onchange();
+$('btnCompact').onclick = async ()=>{
+  if (!S.sid) return;
+  if (!confirm('调用模型把较早历史压成摘要？会消耗一次请求。')) return;
+  setState('正在压缩上下文…');
+  const r = await api('/api/compact', { session:S.sid });
+  toast(r.result?.text || '完成');
+  await openSession(S.sid); await loadState();
+};
+
+function renderChanges(){
+  const cps = S.cps||[];
+  $('cpCount').textContent = cps.length + ' 个检查点（' + cps.filter(c=>!c.undone).length + ' 个可回滚）';
+  $('cpBody').innerHTML = cps.length ? cps.slice().reverse().map(c => `
+    <tr data-cp="${esc(c.id)}" class="${S.selCp===c.id?'sel':''}">
+      <td>${esc(c.tool)}</td>
+      <td title="${esc(c.path)}" style="max-width:190px;overflow:hidden;text-overflow:ellipsis">${esc(c.path.split(/[\\/]/).pop())}</td>
+      <td>${c.bytes_before}→${c.bytes_after}</td>
+      <td style="color:${c.undone?'var(--ink3)':'var(--ok)'}">${c.undone?'已回滚':'生效中'}</td>
+    </tr>`).join('') : '<tr><td colspan="4" class="hint">当前会话还没有文件变更。让模型改一个文件试试。</td></tr>';
+}
+$('cpBody').addEventListener('click', e=>{
+  const tr = e.target.closest('tr[data-cp]'); if (!tr) return;
+  S.selCp = tr.getAttribute('data-cp');
+  const c = (S.cps||[]).find(x=>x.id===S.selCp); if (!c) return;
+  renderChanges();
+  $('diffBox').innerHTML = `<b>${esc(c.tool)}</b> ${esc(c.path)}<br>` +
+    String(c.diff||'').split('\n').map(l=>{
+      if (l.startsWith('+++')||l.startsWith('---')) return `<span class="h">${esc(l)}</span>`;
+      if (l.startsWith('@@')) return `<span class="h">${esc(l)}</span>`;
+      if (l.startsWith('+')) return `<span class="a">${esc(l)}</span>`;
+      if (l.startsWith('-')) return `<span class="d">${esc(l)}</span>`;
+      return esc(l);
+    }).join('\n');
+});
+$('btnRbOne').onclick = ()=>rollback(S.selCp);
+$('btnRbAll').onclick = ()=>rollback(null);
+$('btnCpRefresh').onclick = ()=>openSession(S.sid);
+async function rollback(id){
+  if (!S.sid) return;
+  const cps = (S.cps||[]).filter(c=>!c.undone && (!id || c.id===id));
+  if (!cps.length){ toast('没有可回滚的变更'); return; }
+  if (!confirm('回滚 ' + cps.length + ' 个变更？新建的文件会被删除。')) return;
+  const r = await api('/api/rollback', { session:S.sid, id:id||undefined });
+  toast('已回滚 ' + (r.results||[]).length + ' 个变更');
+  await openSession(S.sid);
+}
+
+function renderRuntime(){
+  $('rtBody').innerHTML = (S.runTools||[]).length
+    ? S.runTools.map(t=>`<tr><td>${esc(t.name)}</td><td style="color:${t.ok?'var(--ok)':'var(--err)'}">${t.ok?'✔':'✘'}</td><td>${t.ms||0}ms</td></tr>`).join('')
+    : '<tr><td colspan="3" class="hint">本次页面会话还没跑过工具</td></tr>';
+  const c = S.state?.ctx||{};
+  $('rtBox').innerHTML = `<b>会话 ${esc(S.sid||'—')}</b><br>消息 ${S.session?.messages?.length||0} 条 · 检查点 ${(S.cps||[]).length} 个<br>
+    上下文 ${c.used||0} / ${c.limit||'—'} tokens（${esc(c.source||'')}）<br>
+    压缩次数 ${S.session?.compactions||0} · ${S.busy?'<span class="spin"></span> 生成中':'空闲'}`;
+}
+
+async function loadConsole(){
+  const r = await api('/api/console?n=300');
+  const lv = $('logLevel').value;
+  $('logbox').textContent = (r.logs||[]).filter(x=>!lv||x.level===lv)
+    .map(x=>`${new Date(x.ts*1000).toLocaleTimeString()} ${x.level.toUpperCase().padEnd(5)} ${(x.source||'').padEnd(13)} ${x.message}`).join('\n');
+  $('logInfo').textContent = '文件：' + (r.file||'');
+}
+$('btnLogRefresh').onclick = loadConsole;
+$('logLevel').onchange = loadConsole;
+
+$('btnSaveCfg').onclick = async ()=>{
+  const prefs = {
+    temperature:parseFloat($('sTemp').value)||0, max_steps:parseInt($('sSteps').value)||40,
+    timeout:parseInt($('sTimeout').value)||180, shell_timeout:parseInt($('sShell').value)||60,
+    max_output_tokens:parseInt($('sMaxOut').value)||0, retries:parseInt($('sRetries').value)||0,
+    proxy:$('sProxy').value.trim(), price_in:parseFloat($('sPin').value)||0, price_out:parseFloat($('sPout').value)||0,
+    sandbox:$('sSandbox').checked, approve_mutating:$('sApprove').checked, enable_tools:$('sTools').checked,
+    auto_compact:$('sAutoCp').checked, auto_title:$('sAutoTitle').checked, system:$('sSys').value,
+    qa_first:$('sQA').checked, qa_max:parseInt($('sQAMax').value)||4
+  };
+  await api('/api/settings', { prefs });
+  await api('/api/qa', { qa_first:$('sQA').checked, qa_max:parseInt($('sQAMax').value)||4 });
+  await loadState();
+  toast('设置已保存 · 沙箱' + (prefs.sandbox?'开':'关') + ' · 审批' + (prefs.approve_mutating?'开':'关')
+        + ' · 先问后做' + (prefs.qa_first?'开':'关'));
+};
+$('btnWorkspace').onclick = async ()=>{
+  const w = prompt('新的工作区绝对路径：', S.state?.workspace||'');
+  if (!w) return;
+  await api('/api/settings', { workspace:w });
+  await loadState();
+  toast('工作区已设为 '+w);
+};
+$('btnSelftest').onclick = async ()=>{
+  $('stOut').textContent = '正在运行真实自检…';
+  const r = await api('/api/selftest');
+  $('stOut').textContent = r.text || JSON.stringify(r);
+  toast('自检完成');
+};
+$('btnShutdown').onclick = async ()=>{
+  if (!confirm('停止后端？网页将断开，需要重新启动。')) return;
+  await api('/api/shutdown', {});
+  setState('后端已停止');
+  setTimeout(()=>location.reload(), 800);
+};
+$('btnTheme').onclick = ()=>{
+  document.body.classList.toggle('light');
+  localStorage.setItem('pi.theme', document.body.classList.contains('light')?'light':'dark');
+};
+if (localStorage.getItem('pi.theme') === 'light') document.body.classList.add('light');
+
+document.querySelectorAll('#tabs button').forEach(b => b.onclick = ()=>{
+  document.querySelectorAll('#tabs button').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.tabpane').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); $('pane-'+b.dataset.tab).classList.add('on');
+  if (b.dataset.tab==='console') loadConsole();
+  if (b.dataset.tab==='changes') renderChanges();
+  if (b.dataset.tab==='runtime') renderRuntime();
+});
+
+// ---- ms-translate：自动译中开关 + 思考块「译成中文」按钮（事件委托） ----
+(function(){
+  const atr = document.getElementById('autoTr');
+  if (atr){
+    atr.checked = localStorage.getItem('piAutoTr') !== '0';
+    atr.onchange = ()=> localStorage.setItem('piAutoTr', atr.checked ? '1' : '0');
+  }
+  const box = document.getElementById('msgs');
+  if (box) box.addEventListener('click', (ev)=>{
+    const t = ev.target;
+    const btn = (t && t.closest) ? t.closest('.thinktr') : null;
+    if (!btn) return;
+    const w = btn.closest('.msg');
+    if (w) translateThinking(w);
+  });
+})();
+
+$('btnNew').onclick = async ()=>{ const r = await api('/api/session/new', { title:'新会话' }); await loadState(); await openSession(r.session.id); };
+$('btnClear').onclick = async ()=>{ if(!S.sid||!confirm('清空当前会话的全部消息？')) return; await api('/api/session/clear',{id:S.sid}); await openSession(S.sid); };
+$('btnExport').onclick = ()=>{
+  const s = S.session; if (!s) return;
+  const out = ['# '+(s.title||'会话'), '', '> 导出时间：'+new Date().toLocaleString(), ''];
+  (s.messages||[]).forEach(m=>{
+    if (m.role==='user') out.push('## 你','',String(m.content||''),'');
+    else if (m.role==='assistant'){ if (m.content) out.push('## PI','',String(m.content),''); }
+    else if (m.role==='tool') out.push('### 工具 '+m.name,'','```text',String(m.content||'').slice(0,20000),'```','');
+  });
+  const blob = new Blob([out.join('\n')], {type:'text/markdown'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = (s.title||'session').replace(/[\\/:*?"<>|]/g,'_')+'.md'; a.click();
+};
+
+function setBusy(b){
+  S.busy = b;
+  $('btnSend').textContent = b ? '停止' : '发送';
+  $('btnSend').className = b ? 'danger' : 'acc';
+  $('input').disabled = false;
+  renderRuntime();
+}
+
+let curAssistant = null, curThink = null;
+
+// ---- ms-translate 插件：思考中英对照（微软 Bing 网页端，免 key） ----
+const b64utf8 = (s)=>{
+  const b = new TextEncoder().encode(String(s||''));
+  let x = '';
+  for (let i=0;i<b.length;i++) x += String.fromCharCode(b[i]);
+  return btoa(x);
+};
+function splitTr(text, limit){
+  const parts = String(text||'').split(/\n{2,}/);
+  const out = []; let cur = '';
+  parts.forEach(p=>{
+    if (cur && (cur.length + p.length + 2) > limit){ out.push(cur); cur = p; }
+    else cur = cur ? (cur + '\n\n' + p) : p;
+  });
+  if (cur) out.push(cur);
+  return out.length ? out : [String(text||'')];
+}
+function renderTrPairs(zbox, pairs){
+  if (!pairs.length){
+    zbox.innerHTML = '<div class="pair"><div class="zh">没有需要翻译的英文片段（中文与代码块已原样保留）。</div></div>';
+    return;
+  }
+  zbox.innerHTML = pairs.map(p=>{
+    const zh = p.zh ? esc(p.zh) : ('<span style="color:var(--err)">' + esc(p.error || '翻译失败') + '</span>');
+    return '<div class="pair">' + (p.zh ? ('<div class="en">' + esc(p.src) + '</div>') : '') + '<div class="zh">' + zh + '</div></div>';
+  }).join('');
+}
+async function translateThinking(wrap){
+  if (!wrap) return;
+  const think = wrap.querySelector('.think');
+  const bar = wrap.querySelector('.thinkbar');
+  const zbox = wrap.querySelector('.thinkzh');
+  const st = bar ? bar.querySelector('.trstate') : null;
+  const btn = bar ? bar.querySelector('.thinktr') : null;
+  const raw = (think && think.textContent || '').trim();
+  if (!raw){ if (st) st.textContent = '没有思考内容'; return; }
+  if (zbox.dataset.src === raw && zbox.innerHTML){ if (st) st.textContent = '已翻译（内容未变）'; return; }
+  if (btn) btn.disabled = true;
+  if (st) st.textContent = '翻译中…';
+  zbox.style.display = 'block';
+  const chunks = splitTr(raw, 4000);
+  const pairs = [];
+  try{
+    for (let i=0;i<chunks.length;i++){
+      if (st) st.textContent = '翻译中… ' + (i+1) + '/' + chunks.length;
+      const r = await api('/api/tool', { name:'plugin_ms-translate__translate',
+        args:{ text_b64:b64utf8(chunks[i]), mode:'thinking', to:'zh-Hans' } });
+      const res = (r && r.result) || {};
+      let data = null;
+      try { data = JSON.parse(res.text || '{}'); } catch(e){ data = null; }
+      if (!data || (!data.pairs || !data.pairs.length) && !data.ok){
+        throw new Error((data && data.error) || res.text || res.error || '翻译失败');
+      }
+      (data.pairs || []).forEach(p=>pairs.push(p));
+    }
+    renderTrPairs(zbox, pairs);
+    const n = pairs.filter(p=>p.zh).length;
+    if (st) st.textContent = n ? ('已译 ' + n + ' 段 · 微软 Bing 网页端') : '没有英文片段需要翻译';
+    zbox.dataset.src = raw;
+  }catch(e){
+    if (st) st.textContent = '翻译失败：' + (e && e.message ? e.message : e);
+  }finally{
+    if (btn) btn.disabled = false;
+  }
+}
+function ensureAssistant(){
+  if (curAssistant) return curAssistant;
+  const box = $('msgs');
+  const wrap = document.createElement('div');
+  wrap.className = 'msg a';
+  wrap.innerHTML = `<div class="who">PI</div><div class="bd"><div class="think" style="display:none"></div><div class="thinkbar" style="display:none"><button class="thinktr">译成中文</button><span class="trstate"></span></div><div class="thinkzh"></div><div class="bub"></div><div class="meta"></div></div>`;
+  box.appendChild(wrap);
+  curAssistant = wrap.querySelector('.bub');
+  curThink = wrap.querySelector('.think');
+  box.scrollTop = box.scrollHeight;
+  return curAssistant;
+}
+
+function handleEvent(e){
+  const k = e.kind, d = e.data;
+  if (k === 'run'){ S.runId = e.run_id; return; }
+  if (k === 'ping'){
+    if (S.busy) setState('生成中… ' + ((S.tick=(S.tick||0)+1)) + 's');
+    return;
+  }
+  if (k === 'assistant_begin'){ curAssistant = null; curThink = null; setState('生成中…'); return; }
+  if (k === 'reasoning_delta'){
+    const a = ensureAssistant();
+    curThink.style.display = 'block';
+    const bar = a.parentElement.querySelector('.thinkbar');
+    if (bar) bar.style.display = 'flex';
+    curThink.textContent += d;
+    curThink.scrollTop = curThink.scrollHeight;
+    $('msgs').scrollTop = $('msgs').scrollHeight;
+    return;
+  }
+  if (k === 'assistant_delta'){
+    const a = ensureAssistant();
+    a.dataset.raw = (a.dataset.raw||'') + d;
+    a.innerHTML = bubbleBody(a.dataset.raw);
+    $('msgs').scrollTop = $('msgs').scrollHeight;
+    return;
+  }
+  if (k === 'assistant_message'){
+    curAssistant = null; curThink = null;
+    return;
+  }
+  if (k === 'tool_start'){
+    const box = document.createElement('div');
+    box.className = 'msg a';
+    box.innerHTML = `<div class="who">工具</div><div class="bd"><div class="toolcard open" id="tc-${esc(d.id||Math.random())}">
+      <div class="th"><span class="nm">${esc(d.name)}</span><span class="st"><span class="spin"></span> 运行中</span></div>
+      <div class="tb"><div class="hint">参数</div><pre>${esc(JSON.stringify(d.args||{},null,1))}</pre><div class="hint">输出</div><pre class="out">…</pre></div>
+    </div></div></div>`;
+    $('msgs').appendChild(box);
+    $('msgs').scrollTop = $('msgs').scrollHeight;
+    curAssistant = null;
+    setState('执行 ' + d.name + ' …');
+    return;
+  }
+  if (k === 'tool_end'){
+    const card = document.getElementById('tc-' + (d.id||''));
+    if (card){
+      card.querySelector('.st').innerHTML = `<span style="color:${d.ok?'var(--ok)':'var(--err)'}">${d.ok?'✔':'✘'} ${d.ms||0}ms</span>`;
+      card.querySelector('pre.out').textContent = String(d.text||'');
+    }
+    (S.runTools = S.runTools||[]).push({name:d.name, ok:d.ok, ms:d.ms});
+    renderRuntime();
+    return;
+  }
+  if (k === 'usage'){
+    $('stTok').textContent = 'tokens ' + (d.total_tokens||0);
+    return;
+  }
+  if (k === 'ctx'){
+    $('stCtx').textContent = `上下文 ${d.used} / ${d.limit}（${d.source}）`;
+    $('bar').firstElementChild.style.width = Math.min(100, d.ratio*100).toFixed(1)+'%';
+    return;
+  }
+  if (k === 'checkpoint'){
+    S.cps.push(d); renderChanges();
+    toast('已留检查点：' + (d.path||''));
+    return;
+  }
+  if (k === 'notice'){ addNotice(d); return; }
+  if (k === 'compact_delta'){ setState('正在压缩上下文…'); return; }
+  if (k === 'title'){ loadState(); return; }
+  if (k === 'error'){ addNotice(String(d), true); return; }
+  if (k === 'approve'){ showApprove(d); return; }
+  if (k === 'ask'){ showAsk(d); return; }
+  if (k === 'done'){
+    const r = (d && d.result) || {};
+    const trWrap = (curThink && curThink.closest) ? curThink.closest('.msg') : null;
+    const trText = curThink ? (curThink.textContent || '') : '';
+    setBusy(false);
+    const meta = curAssistant ? curAssistant.parentElement.querySelector('.meta') : null;
+    if (meta) meta.textContent = (r.steps?('步数 '+r.steps+' · '):'') + (r.usage&&r.usage.total_tokens?('tokens '+r.usage.total_tokens+' · '):'') + ((r.elapsed||0)+'s');
+    curAssistant = null; curThink = null;
+    if (r.error){ addNotice('出错：'+r.error, true); setState('出错'); }
+    else if (r.stopped){ setState('已停止（进程树已终止）'); }
+    else setState('完成 · '+(r.steps||0)+' 步 · '+(r.elapsed||0)+'s · '+((r.tools||[]).length)+' 次工具调用');
+    const autoTr = document.getElementById('autoTr');
+    if (autoTr && autoTr.checked && trWrap && /[A-Za-z]{2,}/.test(trText)){
+      translateThinking(trWrap);   // 保留思考块，译完在下方中英对照（跳过全量重渲染，免得对照被冲掉）
+      loadState();
+    } else {
+      setTimeout(()=>openSession(S.sid), 250);
+    }
+  }
+}
+function addNotice(text, isErr){
+  const box = document.createElement('div');
+  box.className = 'notice' + (isErr?' err':'');
+  box.textContent = text;
+  $('msgs').appendChild(box);
+  $('msgs').scrollTop = $('msgs').scrollHeight;
+}
+
+function showApprove(d){
+  S.pending = d;
+  $('mTitle').textContent = '需要审批：' + d.name;
+  $('mDesc').textContent = (d.meta&&d.meta.desc) || '';
+  let warn = '';
+  const args = d.args||{};
+  if (d.name === 'shell') warn += '⚠ 将在本机执行命令：' + String(args.command||'').slice(0,200) + '\n';
+  if (d.name === 'py_run') warn += '⚠ 将用当前解释器执行代码（' + String(args.code||'').length + ' 字符）\n';
+  ['path','cwd'].forEach(k=>{ if (args[k]) warn += '⚠ 目标路径：' + args[k] + '\n'; });
+  if (S.state?.prefs?.sandbox) warn += '沙箱已开启：文件与命令路径被限制在工作区内。';
+  $('mWarn').textContent = warn;
+  $('mArgs').value = JSON.stringify(args, null, 2);
+  $('mErr').textContent = '';
+  $('modal').classList.add('on');
+  $('mArgs').focus();
+}
+function closeModal(){ $('modal').classList.remove('on'); }
+async function decide(allow, always){
+  const d = S.pending; if (!d) return;
+  let args = null;
+  if (allow){
+    try { args = JSON.parse($('mArgs').value || '{}'); }
+    catch(err){ $('mErr').textContent = 'JSON 解析失败，请修正后再点允许'; return; }
+  }
+  if (always) S.allow[d.name] = true;
+  closeModal();
+  await api('/api/approve', { id: d.id, allow: !!allow, args });
+  S.pending = null;
+}
+$('mAllow').onclick = ()=>decide(true, false);
+$('mDeny').onclick = ()=>decide(false, false);
+$('mAlways').onclick = ()=>decide(true, true);
+$('modal').onclick = e => { if (e.target === $('modal')) decide(false,false); };
+
+// ---------------- 问答（QA）：模型先出选项问清需求 ----------------
+function showAsk(d){
+  const p = d.payload || {};
+  S.ask = d;
+  $('qTitle').textContent = '需要你的选择 · ' + ((p.questions||[]).length) + ' 个问题';
+  $('qIntro').textContent = p.intro || '模型需要你在这几点上拍板，再继续执行：';
+  const box = $('qList'); box.innerHTML = '';
+  (p.questions||[]).forEach((q, i) => {
+    const card = document.createElement('div');
+    card.className = 'qcard';
+    const key = q.key || ('q'+i);
+    const opts = (q.options||[]).map(o => esc(o.label)).join('');
+    let html = '<div class="qq">' + (i+1) + '. ' + esc(q.q) + (q.multi ? ' <span class="od">（可多选）</span>' : '') + '</div>';
+    (q.options||[]).forEach((o, j) => {
+      const checked = (!q.multi && j === 0) ? ' checked' : '';
+      html += '<label class="opt"><input type="' + (q.multi ? 'checkbox' : 'radio') + '" name="' + esc(key) + '"'
+            + ' data-key="' + esc(key) + '" data-label="' + esc(o.label) + '"' + checked + '>'
+            + '<span>' + esc(o.label) + (o.desc ? ' <span class="od">' + esc(o.desc) + '</span>' : '') + '</span></label>';
+    });
+    if (q.allow_custom !== false)
+      html += '<input class="qin" data-custom="' + esc(key) + '" placeholder="其他（自己填，可留空）">';
+    card.innerHTML = html;
+    box.appendChild(card);
+  });
+  if (p.note) $('qIntro').textContent += '　（' + p.note + '）';
+  $('qErr').textContent = 'Enter 提交 · Esc 跳过';
+  $('qa').classList.add('on');
+}
+function askCollect(){
+  const answers = {}, custom = {}, notes = {};
+  ($('qList').querySelectorAll('.qcard')).forEach(card => {
+    const key = card.querySelector('input[data-key]')?.dataset.key || '';
+    const picks = [...card.querySelectorAll('input[data-key]')].filter(i => i.checked).map(i => i.dataset.label);
+    const cu = card.querySelector('input[data-custom]');
+    if (picks.length) answers[key] = picks;
+    if (cu && cu.value.trim()) custom[key] = cu.value.trim();
+  });
+  return { answers, custom, notes };
+}
+async function answerAsk(skip){
+  const d = S.ask; if (!d) return;
+  const body = { id: d.id, skip: !!skip };
+  if (!skip){ const a = askCollect(); body.answers = a.answers; body.custom = a.custom; body.notes = a.notes; }
+  $('qa').classList.remove('on');
+  S.ask = null;
+  await api('/api/answer', body);
+}
+$('qSend').onclick = ()=>answerAsk(false);
+$('qSkip').onclick = ()=>answerAsk(true);
+document.addEventListener('keydown', e => {
+  if (!$('qa').classList.contains('on')) return;
+  if (e.key === 'Escape'){ answerAsk(true); }
+  else if (e.key === 'Enter' && e.target.tagName !== 'INPUT'){ answerAsk(false); }
+});
+
+async function send(){
+  if (S.busy){
+    await api('/api/stop', { run_id:S.runId, session_id:S.sid });
+    setState('正在停止…');
+    return;
+  }
+  const text = $('input').value.trim();
+  if (!text) return;
+  if (text.startsWith('/')){ if (await slash(text)) { $('input').value=''; return; } }
+  $('input').value = '';
+  addUser(text);
+  setBusy(true);
+  setState('已发送，等待模型…');
+  S.runTools = [];
+  try{
+    const res = await fetch('/api/chat?t='+encodeURIComponent(TOK), {
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-PI-Token':TOK},
+      body: JSON.stringify({ session_id:S.sid, text })
+    });
+    if (!res.ok || !res.body){ addNotice('后端返回 '+res.status, true); setBusy(false); return; }
+    const reader = res.body.getReader(), dec = new TextDecoder();
+    let buf = '';
+    while(true){
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, {stream:true});
+      let i;
+      while((i = buf.indexOf('\n\n')) >= 0){
+        const chunk = buf.slice(0, i); buf = buf.slice(i+2);
+        if (!chunk.startsWith('data: ')) continue;
+        const payload = chunk.slice(6).trim();
+        if (payload === '[DONE]') continue;
+        try { handleEvent(JSON.parse(payload)); } catch(err){ /* 忽略半包 */ }
+      }
+    }
+  } catch(err){
+    addNotice('连接后端失败：' + err, true);
+  } finally {
+    setBusy(false);
+  }
+}
+function addUser(text){
+  const box = $('msgs');
+  if (box.querySelector('.hint')) box.innerHTML = '';
+  const div = document.createElement('div');
+  div.className = 'msg u';
+  div.innerHTML = `<div class="who">你</div><div class="bd"><div class="bub">${bubbleBody(text)}</div></div>`;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
+$('btnSend').onclick = send;
+$('input').addEventListener('keydown', e=>{
+  if (e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); send(); }
+});
+
+async function slash(cmd){
+  const [c, ...rest] = cmd.slice(1).split(/\s+/);
+  const arg = rest.join(' ');
+  const help = {
+    ctx:'上下文账本', compact:'压缩上下文', changes:'文件变更检查点', rollback:'回滚变更',
+    status:'当前状态', tools:'工具列表', selftest:'运行真实自检', clear:'清空当前会话',
+    new:'新建会话', model:'切换模型', workspace:'设置工作区', export:'导出 Markdown', logs:'最近日志'
+  };
+  if (c === 'help'){
+    addNotice('斜杠命令：\n' + Object.entries(help).map(([k,v])=>`  /${k}  ${v}`).join('\n'));
+    return true;
+  }
+  if (c === 'ctx'){ const r=await api('/api/state'); const x=r.ctx;
+    addNotice(`模型 ${r.provider.model}\n窗口 ${x.limit} tokens（${x.source}）\n已用 ${x.used}（${(x.ratio*100).toFixed(1)}%）`); return true; }
+  if (c === 'compact'){ $('btnCompact').click(); return true; }
+  if (c === 'changes'){ $('tabs').querySelector('[data-tab="changes"]').click();
+    addNotice((S.cps||[]).length ? (S.cps.length+' 个检查点，见右侧「变更」面板') : '没有文件变更检查点'); return true; }
+  if (c === 'rollback'){ rollback(arg || null); return true; }
+  if (c === 'status'){
+    const r = await api('/api/health');
+    addNotice(`端点 ${r.provider.base_url}\n模型 ${r.provider.model}\n密钥 ${r.provider.key}\n工作区 ${r.workspace}\n工具 ${r.tools} 个`); return true; }
+  if (c === 'tools'){ $('tabs').querySelector('[data-tab="tools"]').click();
+    addNotice('工具：\n' + (S.state.tools||[]).map(t=>`  ${t.name.padEnd(10)} ${t.group}${t.mutating?' ⚠':''}`).join('\n')); return true; }
+  if (c === 'selftest'){ $('tabs').querySelector('[data-tab="settings"]').click(); $('btnSelftest').click(); return true; }
+  if (c === 'clear'){ $('btnClear').click(); return true; }
+  if (c === 'new'){ $('btnNew').click(); return true; }
+  if (c === 'model'){ if (arg){ $('modelSel').value = arg; $('btnApplyModel').click(); } return true; }
+  if (c === 'workspace'){ $('btnWorkspace').click(); return true; }
+  if (c === 'export'){ $('btnExport').click(); return true; }
+  if (c === 'logs'){ $('tabs').querySelector('[data-tab="console"]').click(); loadConsole(); return true; }
+  addNotice('未知命令 /' + c + '，输入 /help 查看');
+  return true;
+}
+
+setInterval(() => {
+  if (!S.busy) return;
+  const el = $('stState');
+  if (/生成中|执行/.test(el.textContent)) el.textContent += '.';
+}, 1200);
+boot();
+</script>
+</body>
+</html>

@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>断裂长条形状修复与中心线提取 · 可视化</title>
+<style>
+  :root{
+    --bg:#0b1220; --bg2:#0f1a2c; --panel:#111d31; --line:#1f3350;
+    --fg:#dbe7f5; --dim:#8fa6c2; --teal:#2dd4bf; --amber:#fbbf24;
+    --red:#f87171; --green:#4ade80; --blue:#60a5fa; --violet:#a78bfa;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{background:radial-gradient(1200px 700px at 15% -10%,#14263f 0%,var(--bg) 55%);
+       color:var(--fg);font:14px/1.5 "Segoe UI","Microsoft YaHei",system-ui,sans-serif}
+  header{display:flex;align-items:center;gap:14px;padding:12px 18px;border-bottom:1px solid var(--line);
+         background:linear-gradient(180deg,rgba(20,35,58,.9),rgba(11,18,32,.6));position:sticky;top:0;z-index:5}
+  header h1{font-size:16px;margin:0;font-weight:650;letter-spacing:.3px}
+  header .tag{font-size:11px;padding:2px 8px;border:1px solid var(--line);border-radius:999px;color:var(--dim)}
+  main{display:grid;grid-template-columns:minmax(0,1fr) 372px;gap:14px;padding:14px;align-items:start}
+  @media (max-width:1180px){main{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px}
+  .card h2{font-size:12px;margin:0 0 9px;color:var(--dim);font-weight:600;letter-spacing:.6px;text-transform:uppercase}
+  #stage{position:relative;background:#060c16;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  canvas#cv{display:block;cursor:crosshair}
+  .hud{position:absolute;left:10px;bottom:8px;font:11px/1.5 ui-monospace,Consolas,monospace;
+       color:#9fb4cd;background:rgba(6,12,22,.72);border:1px solid var(--line);border-radius:8px;padding:5px 9px;
+       pointer-events:none;white-space:pre}
+  .badge{position:absolute;right:10px;top:10px;font:12px/1.4 ui-monospace,Consolas,monospace;
+         background:rgba(6,12,22,.78);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+  .row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+  button{background:#16273f;color:var(--fg);border:1px solid var(--line);border-radius:8px;
+         padding:6px 10px;font-size:12.5px;cursor:pointer;transition:.15s}
+  button:hover{border-color:var(--teal);color:#fff}
+  button.on{background:linear-gradient(180deg,#1d4f52,#153f45);border-color:var(--teal);color:#eafffb}
+  button.pri{background:linear-gradient(180deg,#1d4f52,#123a3f);border-color:#2b7f7a}
+  label.chk{display:flex;align-items:center;gap:6px;font-size:12.5px;color:#c7d6e8;cursor:pointer;
+            padding:3px 6px;border-radius:7px}
+  label.chk:hover{background:#16273f}
+  input[type=range]{width:100%;accent-color:#2dd4bf}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  td,th{padding:3px 4px;border-bottom:1px solid #182b45;text-align:right}
+  td:first-child,th:first-child{text-align:left;color:var(--dim)}
+  .num{font-family:ui-monospace,Consolas,monospace}
+  .kpi{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .kpi div{background:#0d1a2c;border:1px solid var(--line);border-radius:9px;padding:7px 9px}
+  .kpi span{display:block;font-size:10.5px;color:var(--dim)}
+  .kpi b{font-size:16px;font-family:ui-monospace,Consolas,monospace;font-weight:600}
+  .good{color:var(--green)} .bad{color:var(--red)} .warn{color:var(--amber)}
+  .legend{display:flex;flex-wrap:wrap;gap:8px;font-size:11.5px;color:#b9cbe0}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+  details{border:1px solid var(--line);border-radius:9px;padding:6px 9px;background:#0d1a2c}
+  summary{cursor:pointer;font-size:12.5px;color:#c7d6e8}
+  .reason{font:11.5px/1.5 ui-monospace,Consolas,monospace;color:#f0b3b3;word-break:break-all}
+  .reason.ok{color:#a7e8c0}
+  .steps{display:flex;flex-wrap:wrap;gap:5px}
+  .steps button{font-size:11.5px;padding:4px 8px}
+  .mini{display:block;width:100%;height:96px;background:#08111f;border:1px solid var(--line);border-radius:8px}
+  .hint{font-size:11.5px;color:#7d93ae}
+  .swatch{display:flex;gap:6px;align-items:center;font-size:12px}
+  .bar{height:6px;border-radius:3px;background:#16273f;overflow:hidden}
+  .bar i{display:block;height:100%;background:linear-gradient(90deg,#2dd4bf,#fbbf24)}
+</style>
+</head>
+<body>
+<header>
+  <h1>断裂长条形状修复 + 中心线提取</h1>
+  <span class="tag">碎片链重建 / 几何外推配对 / 骨架测地最长路径</span>
+  <span class="tag" id="tagScene"></span>
+</header>
+
+<main>
+  <section>
+    <div id="stage">
+      <canvas id="cv"></canvas>
+      <div class="badge" id="badge"></div>
+      <div class="hud" id="hud"></div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <h2>修复过程（分阶段）</h2>
+      <div class="row steps" id="steps"></div>
+      <div class="row" style="margin-top:9px">
+        <button id="btnPrev">◀ 上一步</button>
+        <button id="btnPlay" class="pri">▶ 播放全过程</button>
+        <button id="btnNext">下一步 ▶</button>
+        <span class="hint" id="stageDesc"></span>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <h2>图层与视口</h2>
+      <div class="grid2">
+        <div id="layers"></div>
+        <div>
+          <div class="row"><span class="hint">缩放</span><input id="zoom" type="range" min="1" max="9" step="1" value="3"></div>
+          <div class="row" style="margin-top:6px">
+            <button id="btnFit">适应窗口</button>
+            <button id="btnPng">导出 PNG</button>
+            <button id="btnReset">复位</button>
+          </div>
+          <div class="legend" style="margin-top:8px" id="legend"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <aside>
+    <div class="card">
+      <h2>方法选择</h2>
+      <div class="row">
+        <button id="mB" class="on">方法B 碎片链重建</button>
+        <button id="mA">方法A 形态学闭合</button>
+      </div>
+      <div id="rWrap" style="margin-top:10px;display:none">
+        <div class="row" style="justify-content:space-between">
+          <span class="hint">闭运算圆盘半径 r</span><b class="num" id="rVal">1</b>
+        </div>
+        <input id="rSlider" type="range" min="1" max="8" step="1" value="1">
+        <div class="hint">r 越大越能"糊"住断裂，但也会把旁边的干扰形状一起并进来。</div>
+      </div>
+      <div class="hint" id="methodNote" style="margin-top:8px"></div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <h2>关键指标</h2>
+      <div class="kpi" id="kpi"></div>
+      <table style="margin-top:10px" id="tbl"></table>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <h2>宽度剖面（弧长 → 河宽 px）</h2>
+      <canvas class="mini" id="wcv"></canvas>
+      <div class="legend" style="margin-top:6px">
+        <span><i style="background:#2dd4bf"></i>估计宽度</span>
+        <span><i style="background:#8fa6c2"></i>真值宽度</span>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <h2>中心线误差（到真值中心线的距离 px）</h2>
+      <canvas class="mini" id="ecv"></canvas>
+      <div class="row" style="margin-top:6px">
+        <span class="hint">容差线：2px / 5px</span>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <h2>碎片几何描述</h2>
+      <div style="max-height:190px;overflow:auto"><table id="fragTbl"></table></div>
+      <div class="hint" style="margin-top:6px">长度=骨架弧长；厚度=面积/弧长；伸长率=长度/厚度。绿=进入河流链，红=被判为干扰。</div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <h2>配对判定与拒绝理由</h2>
+      <div style="max-height:210px;overflow:auto" id="linkList"></div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <h2>算法参数</h2>
+      <table id="paramTbl"></table>
+    </div>
+  </aside>
+</main>
+
+<script>
+const DATA = __DATA__;
+const W = DATA.meta.W, H = DATA.meta.H;
+
+/* ---------------- 解码 ---------------- */
+function b64bytes(b64){
+  const bin = atob(b64), out = new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) out[i]=bin.charCodeAt(i);
+  return out;
+}
+const BITCACHE = {};
+function bits(name){
+  if(BITCACHE[name]) return BITCACHE[name];
+  const bytes = b64bytes(name);
+  const out = new Uint8Array(W*H);
+  for(let i=0;i<out.length;i++) out[i] = (bytes[i>>3] >> (i&7)) & 1;
+  return BITCACHE[name] = out;
+}
+let FRAG_IDS = null;
+function fragIds(){
+  if(FRAG_IDS) return FRAG_IDS;
+  const g = new Uint8Array(W*H), rows = DATA.rle.fragIds.split('|');
+  for(let y=0;y<rows.length && y<H;y++){
+    const s = rows[y]; if(!s) continue;
+    for(const run of s.split(';')){
+      const [a,l,v] = run.split(',').map(Number);
+      for(let k=0;k<l;k++) g[y*W + a + k] = v;
+    }
+  }
+  return FRAG_IDS = g;
+}
+function hex2rgb(h){return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];}
+function mix(c, f, a){return [c[0]+(f[0]-c[0])*a, c[1]+(f[1]-c[1])*a, c[2]+(f[2]-c[2])*a];}
+
+/* ---------------- 状态 ---------------- */
+const S = {
+  method:'B', r:1, stage:6, playing:false, zoom:3,
+  layers:{ frag:true, role:true, noise:true, obst:true, gt:false, mask:true, tube:true,
+           skel:false, center:true, gtc:true, cands:false, arcs:false, width:false, err:false },
+  hover:null, mouse:{x:0,y:0}
+};
+const STAGES = [
+  {n:0,t:'原始输入',d:'随机断裂的河流碎片 + 椭圆/矩形/随机块等干扰 + 盐噪声'},
+  {n:1,t:'去噪',d:'剔除面积 < '+DATA.meta.params.AREA_MIN_FRAG+'px 的孤立斑点'},
+  {n:2,t:'碎片几何分析',d:'逐块骨架化 → 弧长/厚度/伸长率/两端点/外推方向'},
+  {n:3,t:'候选配对',d:'端点外推 + 间距 + 方向 + 厚度一致性 四要素打分'},
+  {n:4,t:'桥接修复',d:'沿配对关系画等宽连接管，串成一条连通的长条'},
+  {n:5,t:'骨架化',d:'Zhang-Suen 细化 + 毛刺剪枝'},
+  {n:6,t:'中心线 + 宽度',d:'测地最长路径 + 法向剖面亚像素细化'},
+  {n:7,t:'与真值对比',d:'误差沿弧长分布，2px 内视为贴合'}
+];
+
+/* ---------------- 画布 ---------------- */
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+let off = document.createElement('canvas'), octx = off.getContext('2d');
+off.width = W; off.height = H;
+const imgBuf = {frag:octx.createImageData(W,H), obst:null};
+let pan = {x:0,y:0}, dragging=false, dragStart=null;
+
+function sizeCanvas(){
+  const pad = 0;
+  cv.width = W*S.zoom; cv.height = H*S.zoom;
+  cv.style.width = cv.width+'px'; cv.style.height = cv.height+'px';
+}
+
+/* ---------------- 图层栅格 ---------------- */
+function roleColor(f){
+  if(f.role==='chain') return hex2rgb('#2dd4bf');
+  if(f.role==='noise') return hex2rgb('#64748b');
+  if(f.kind && f.kind.indexOf('盐')>=0) return hex2rgb('#64748b');
+  return hex2rgb('#f472b6');
+}
+function drawFragLayer(){
+  const d = imgBuf.frag.data, ids = fragIds(), fmap = {};
+  for(const f of DATA.frags) fmap[f.id] = f;
+  const noiseSet = {};
+  for(const f of DATA.frags) if(f.role==='noise') noiseSet[f.id]=1;
+  d.fill(0);
+  for(let i=0;i<W*H;i++){
+    const id = ids[i]; if(!id) continue;
+    const f = fmap[id];
+    let c;
+    if(!f){ c = [110,90,120]; }
+    else {
+      const isNoise = !!noiseSet[id];
+      if(isNoise){
+        if(S.stage>=1){ continue; }              // 去噪之后：斑点已被剔除
+        c = [244,63,94];                          // 去噪之前：醒目标出噪声
+      } else {
+        const base = roleColor(f);
+        const j = ((id*37)%23)/23*0.35 - 0.12;
+        c = mix(base, [255,255,255], Math.max(0,j));
+        if(S.layers.role===false) c = [150,183,214];
+      }
+    }
+    d[i*4]=c[0]; d[i*4+1]=c[1]; d[i*4+2]=c[2]; d[i*4+3]= 255;
+  }
+}
+function packBitsToCanvas(bitsArr, color, alpha, mode){
+  const d = imgBuf.frag.data;
+  const [r,g,b] = color;
+  for(let i=0;i<W*H;i++){
+    if(!bitsArr[i]) continue;
+    if(mode==='set'){ d[i*4]=r; d[i*4+1]=g; d[i*4+2]=b; d[i*4+3]=255; }
+    else { // blend
+      d[i*4]   = d[i*4]*(1-alpha)+r*alpha;
+      d[i*4+1] = d[i*4+1]*(1-alpha)+g*alpha;
+      d[i*4+2] = d[i*4+2]*(1-alpha)+b*alpha;
+      d[i*4+3] = 255;
+    }
+  }
+}
+
+/* ---------------- 绘制 ---------------- */
+function toCanvas(x,y){ return [ (x*S.zoom)+pan.x, (y*S.zoom)+pan.y ]; }
+function drawPoly(pts, color, w, dash){
+  if(!pts || pts.length<2) return;
+  ctx.save(); ctx.strokeStyle=color; ctx.lineWidth=w;
+  if(dash) ctx.setLineDash(dash);
+  ctx.beginPath();
+  pts.forEach((p,i)=>{ const [x,y]=toCanvas(p[0],p[1]); i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
+  ctx.stroke(); ctx.restore();
+}
+function drawDot(p, color, rad){
+  const [x,y]=toCanvas(p[0],p[1]);
+  ctx.save(); ctx.fillStyle=color; ctx.beginPath(); ctx.arc(x,y,rad,0,6.3); ctx.fill(); ctx.restore();
+}
+function currentCenterline(){
+  if(S.method==='A'){ const a = DATA.A[S.r-1]; return {pts:a.center, w:a.width, m:a.metrics}; }
+  return {pts:DATA.B.center, w:DATA.B.width, m:DATA.B.metrics, err:DATA.B.err};
+}
+function draw(){
+  sizeCanvas();
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.fillStyle = '#060c16'; ctx.fillRect(0,0,cv.width,cv.height);
+  const st = S.stage;
+  const L = S.layers;
+
+  // ---- 栅格层
+  drawFragLayer();
+  const d = imgBuf.frag.data;
+  if(L.gt && st>=7){ packBitsToCanvas(bits(DATA.bits.true), [250,204,21], 0.16, 'blend'); }
+  if(st>=3 && L.tube && S.method==='B'){ packBitsToCanvas(bits(DATA.bits.bTube), [250,204,21], 0.55, 'blend'); }
+  if(st>=4 && L.mask){
+    if(S.method==='B') packBitsToCanvas(bits(DATA.bits.bMask), [45,212,191], 0.55, 'blend');
+    else packBitsToCanvas(bigA(S.r-1), [96,165,250], 0.55, 'blend');
+  }
+  if(st>=5 && S.method==='B'){
+    packBitsToCanvas(bits(DATA.bits.bSkel), [226,232,240], 0.95, 'set');
+  }
+  octx.putImageData(imgBuf.frag, 0, 0);
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(off, pan.x, pan.y, W*S.zoom, H*S.zoom);
+  ctx.imageSmoothingEnabled = true;
+
+  // ---- 矢量层
+  const showFragGeom = st>=2;
+  if(showFragGeom && (L.arcs||L.cands===false)){
+    // 碎片骨架 + 端点
+    for(const f of DATA.frags){
+      if(f.skel && f.skel.length>1 && (f.role==='chain'||st>=2)){
+        drawPoly(f.skel, f.role==='chain' ? 'rgba(125,211,252,.75)' : 'rgba(244,114,182,.55)', 1.4);
+      }
+    }
+  }
+  if(st>=2 && L.arcs){
+    for(const b of DATA.bridges||[]){
+      drawPoly(b.arcA, 'rgba(251,191,36,.85)', 1.6, [5,4]);
+      drawPoly(b.arcB, 'rgba(96,165,250,.85)', 1.6, [5,4]);
+    }
+    for(const f of DATA.frags){
+      if(f.role==='noise') continue;
+      drawDot(f.end0, f.role==='chain'?'#34d399':'#fb7185', 3.2);
+      drawDot(f.end1, f.role==='chain'?'#34d399':'#fb7185', 3.2);
+    }
+  }
+  if(st>=3 && L.cands){
+    for(const c of DATA.cands){
+      if(c.chosen) continue;
+      drawPoly([c.pa,c.pb], c.ok ? 'rgba(74,222,128,.75)' : 'rgba(248,113,113,.45)', 1.2,
+               c.ok?[]:[3,3]);
+    }
+    for(const c of DATA.cands){
+      if(!c.chosen) continue;
+      drawPoly([c.pa,c.pb], 'rgba(45,212,191,.95)', 2.4);
+    }
+  }
+  if(st>=4 && L.tube && S.method==='B'){
+    for(const b of DATA.bridges||[]){
+      drawPoly([b.pa,b.pb], '#fbbf24', 2.2);
+    }
+  }
+  if(L.gtc && st>=6){
+    drawPoly(DATA.gt.center, 'rgba(148,163,184,.85)', 1.6, [6,5]);
+  }
+  if(st>=6){
+    const cl = currentCenterline();
+    if(L.width && cl.w){
+      // 宽度包络：沿中心线法向画短棒
+      const pts = cl.pts;
+      ctx.save();
+      for(let i=0;i<pts.length;i+=3){
+        const a = pts[Math.max(0,i-2)], b = pts[Math.min(pts.length-1,i+2)];
+        let tx=b[0]-a[0], ty=b[1]-a[1], n=Math.hypot(tx,ty)||1; tx/=n; ty/=n;
+        const half=(cl.w[i]||0)/2;
+        const p1 = toCanvas(pts[i][0]-ty*half, pts[i][1]+tx*half);
+        const p2 = toCanvas(pts[i][0]+ty*half, pts[i][1]-tx*half);
+        ctx.strokeStyle='rgba(45,212,191,.5)'; ctx.lineWidth=1.2;
+        ctx.beginPath(); ctx.moveTo(p1[0],p1[1]); ctx.lineTo(p2[0],p2[1]); ctx.stroke();
+      }
+      ctx.restore();
+    }
+    if(L.err && cl.err){
+      for(let i=0;i<cl.pts.length-1;i++){
+        const e = cl.err[i];
+        const col = e<=1? '#4ade80' : e<=2? '#a3e635' : e<=3? '#fbbf24' : '#f87171';
+        drawPoly([cl.pts[i], cl.pts[i+1]], col, 3.2);
+      }
+    }
+    drawPoly(cl.pts, S.method==='B' ? '#fb923c' : '#60a5fa', 2.6);
+    if(cl.pts.length) { drawDot(cl.pts[0],'#fde68a',3.6); drawDot(cl.pts[cl.pts.length-1],'#fde68a',3.6); }
+  }
+  updateHUD();
+}
+function bigA(idx){
+  if(!BITCACHE['A'+idx]) BITCACHE['A'+idx] = bits(DATA.A[idx].mask);
+  return BITCACHE['A'+idx];
+}
+function updateHUD(){
+  const cl = currentCenterline();
+  const m = cl.m || {};
+  const st = STAGES[S.stage];
+  document.getElementById('hud').textContent =
+    `阶段 ${st.n}/${STAGES.length-1}  ${st.t}\n中心线长 ${(m.cl_len??0).toFixed(1)}px  均值误差 ${(m.mean??0).toFixed(2)}px  P95 ${(m.p95??0).toFixed(2)}px  宽度RMSE ${(m.w_rmse??0).toFixed(2)}px`;
+  document.getElementById('stageDesc').textContent = st.d;
+  document.getElementById('badge').innerHTML =
+    (S.method==='B' ? '<b style="color:#2dd4bf">方法B</b> 碎片链重建' :
+                      `<b style="color:#60a5fa">方法A</b> 形态学闭合 r=${S.r}`) +
+    (S.method==='A' ? `<br><span style="color:${DATA.A[S.r-1].metrics.contam>0?'#f87171':'#8fa6c2'}">误并干扰 ${DATA.A[S.r-1].metrics.contam} px</span>`
+                    : `<br><span style="color:#4ade80">误并干扰 0 px</span>`);
+}
+
+const STAGE_LAYERS = {
+  0:{mask:false,tube:false,skel:false,center:false,gtc:false,cands:false,arcs:false,width:false,err:false,gt:false},
+  1:{mask:false,tube:false,skel:false,center:false,gtc:false,cands:false,arcs:false,width:false,err:false,gt:false},
+  2:{mask:false,tube:false,skel:false,center:false,gtc:false,cands:false,arcs:true,width:false,err:false,gt:false},
+  3:{mask:false,tube:false,skel:false,center:false,gtc:false,cands:true,arcs:false,width:false,err:false,gt:false},
+  4:{mask:true,tube:true,skel:false,center:false,gtc:false,cands:true,arcs:false,width:false,err:false,gt:false},
+  5:{mask:true,tube:false,skel:true,center:false,gtc:false,cands:false,arcs:false,width:false,err:false,gt:false},
+  6:{mask:true,tube:false,skel:false,center:true,gtc:false,cands:false,arcs:false,width:true,err:false,gt:false},
+  7:{mask:true,tube:false,skel:false,center:true,gtc:true,cands:false,arcs:false,width:false,err:true,gt:false}
+};
+function applyStageLayers(stage){
+  const d = STAGE_LAYERS[stage];
+  if(!d) return;
+  for(const k in d) S.layers[k] = d[k];
+  document.querySelectorAll('#layers input').forEach(el=>{ el.checked = !!S.layers[el.dataset.k]; });
+  S.layers.frag = true; S.layers.role = true;
+}
+function setStage(n){
+  S.stage = Math.max(0, Math.min(7, n));
+  applyStageLayers(S.stage);
+  syncStages(); draw();
+}
+
+/* ---------------- 面板 ---------------- */
+function f2(v, d=2){ return (v===null||v===undefined||Number.isNaN(v))?'—':Number(v).toFixed(d); }
+function renderKPI(){
+  const cl = currentCenterline(), m = cl.m;
+  const kpi = [
+    ['修复后连通域', m.comps, S.method==='B'? (m.comps===1?'good':'warn') : ''],
+    ['误并入干扰', m.contam, m.contam>0?'bad':'good'],
+    ['中心线长度 px', f2(m.cl_len,1), ''],
+    ['均值误差 px', f2(m.mean), m.mean<0.6?'good':(m.mean<1.5?'warn':'bad')],
+    ['P95 误差 px', f2(m.p95), m.p95<1.5?'good':(m.p95<3?'warn':'bad')],
+    ['预测→真值 覆盖@2px', (100*(m.cov2??0)).toFixed(1)+'%', (m.cov2??0)>0.95?'good':'warn'],
+    ['真值→预测 覆盖@2px', (100*(m.gt_cover2??0)).toFixed(1)+'%', (m.gt_cover2??0)>0.9?'good':'bad'],
+    ['宽度 RMSE px', f2(m.w_rmse), (m.w_rmse??9)<0.8?'good':((m.w_rmse??9)<1.6?'warn':'bad')],
+    ['长条比 长/厚', S.method==='B'? f2(m.strip_ratio,1) : f2(m.sel_elong,2), '']
+  ];
+  document.getElementById('kpi').innerHTML = kpi.map(([k,v,c])=>
+    `<div><span>${k}</span><b class="${c}">${v}</b></div>`).join('');
+
+  const tbl = [
+    ['对比项','方法B','方法A(r='+S.r+')'],
+    ['连通域数', m.comps, DATA.A[S.r-1].metrics.comps],
+    ['误并干扰 px', DATA.B.metrics.contam, DATA.A[S.r-1].metrics.contam],
+    ['中心线长 px', f2(DATA.B.metrics.cl_len,1), f2(DATA.A[S.r-1].metrics.cl_len,1)],
+    ['均值误差 px', f2(DATA.B.metrics.mean), f2(DATA.A[S.r-1].metrics.mean)],
+    ['P95 误差 px', f2(DATA.B.metrics.p95), f2(DATA.A[S.r-1].metrics.p95)],
+    ['预测→真值覆盖@2px', (100*DATA.B.metrics.cov2).toFixed(1)+'%', (100*DATA.A[S.r-1].metrics.cov2).toFixed(1)+'%'],
+    ['真值→预测覆盖@2px', (100*DATA.B.metrics.gt_cover2).toFixed(1)+'%', (100*DATA.A[S.r-1].metrics.gt_cover2).toFixed(1)+'%'],
+    ['宽度 RMSE px', f2(DATA.B.metrics.w_rmse), f2(DATA.A[S.r-1].metrics.w_rmse)]
+  ];
+  document.getElementById('tbl').innerHTML = tbl.map((r,i)=>
+    `<tr>${r.map((c,j)=> j===0? `<td>${c}</td>` : `<td class="num">${c}</td>`).join('')}</tr>`).join('');
+}
+function renderFragTable(){
+  const rows = [['#','长度','厚度','伸长率','角色']].concat(
+    DATA.frags.slice().sort((a,b)=>b.length-a.length).map(f=>
+      [f.id, f2(f.length,1), f2(f.thick,1), f2(f.elong,1),
+       (f.role==='chain'?'<span style="color:#2dd4bf">河流碎片</span>':
+        f.role==='noise'?'<span style="color:#94a3b8">噪声</span>':
+        `<span style="color:#f472b6">${f.kind}</span>`)]));
+  document.getElementById('fragTbl').innerHTML = rows.map((r,i)=>
+    `<tr>${r.map(c=>`<td class="num">${c}</td>`).join('')}</tr>`).join('');
+}
+function renderLinks(){
+  const html = DATA.cands.map(c=>{
+    const tag = c.chosen ? '<span style="color:#2dd4bf">✔ 采用</span>'
+              : c.ok ? '<span style="color:#4ade80">候选(未采用)</span>'
+              : '<span style="color:#f87171">✘ 拒绝</span>';
+    return `<details style="margin-bottom:5px"><summary>碎片 ${c.a} ⇄ ${c.b} &nbsp;间距 ${f2(c.d,1)}px &nbsp;${tag}</summary>
+      <div class="reason ${c.ok?'ok':''}">代价=${f2(c.cost,1)} ${c.reasons.length? '<br>原因: '+c.reasons.join('; ') : '<br>四要素全部通过'}</div></details>`;
+  }).join('');
+  document.getElementById('linkList').innerHTML = html || '<span class="hint">无候选</span>';
+}
+function renderParams(){
+  const p = DATA.meta.params;
+  const rows = [['参数','值'],
+    ['去噪面积阈值', p.AREA_MIN_FRAG], ['配对最小面积', p.AREA_MIN_LINK],
+    ['最小伸长率', p.ELONG_MIN_LINK], ['最大间距 px', p.GAP_MAX],
+    ['最大方向角', p.ANGLE_MAX+'°'], ['外推取用弧长 px', p.PRED_REACH],
+    ['厚度比上限', p.THICK_RATIO_MAX], ['长条比阈值', p.STRIP_RATIO],
+    ['外推硬上限', p.ERR_HARD_K+'·t+'+p.ERR_HARD_B],
+    ['输入连通域', DATA.meta.n_input_comp], ['其中噪声', DATA.meta.n_noise],
+    ['河流碎片', DATA.meta.n_frag], ['桥接处数', DATA.B.metrics.n_bridge],
+    ['缝宽合计 px', f2(DATA.B.metrics.gap_sum,1)],
+    ['修复耗时 s', DATA.meta.time_b]];
+  document.getElementById('paramTbl').innerHTML = rows.map(r=>
+    `<tr><td>${r[0]}</td><td class="num">${r[1]}</td></tr>`).join('');
+}
+function renderLegend(){
+  document.getElementById('legend').innerHTML = `
+    <span><i style="background:#2dd4bf"></i>河流碎片/修复掩膜</span>
+    <span><i style="background:#f472b6"></i>干扰形状</span>
+    <span><i style="background:#64748b"></i>盐噪声</span>
+    <span><i style="background:#fbbf24"></i>桥接管</span>
+    <span><i style="background:#fb923c"></i>提取的中心线</span>
+    <span><i style="background:#94a3b8"></i>真值中心线(虚线)</span>
+    <span><i style="background:#34d399"></i>碎片端点</span>`;
+}
+function renderLayers(){
+  const defs = [['frag','原碎片/干扰栅格'],['role','按角色着色'],['mask','修复掩膜'],
+                ['tube','桥接管'],['skel','骨架'],['center','中心线'],['width','宽度包络'],
+                ['err','误差着色'],['gtc','真值中心线'],['gt','真值河流带'],
+                ['cands','候选配对'],['arcs','端点外推弧']];
+  document.getElementById('layers').innerHTML = defs.map(([k,t])=>
+    `<label class="chk"><input type="checkbox" data-k="${k}" ${S.layers[k]?'checked':''}>${t}</label>`).join('');
+  document.querySelectorAll('#layers input').forEach(el=>{
+    el.onchange = ()=>{ S.layers[el.dataset.k] = el.checked; draw(); };
+  });
+}
+function renderSteps(){
+  document.getElementById('steps').innerHTML = STAGES.map(s=>
+    `<button data-s="${s.n}" class="${S.stage===s.n?'on':''}">${s.n} ${s.t}</button>`).join('');
+  document.querySelectorAll('#steps button').forEach(b=>{
+    b.onclick = ()=>{ setStage(+b.dataset.s); };
+  });
+}
+function syncStages(){
+  document.querySelectorAll('#steps button').forEach(b=>
+    b.classList.toggle('on', +b.dataset.s===S.stage));
+}
+
+/* ---------------- 曲线图 ---------------- */
+function drawChart(canvasId, series, opts){
+  const c = document.getElementById(canvasId), g = c.getContext('2d');
+  const dpr = window.devicePixelRatio||1;
+  const w = c.clientWidth, h = c.clientHeight;
+  c.width = w*dpr; c.height = h*dpr; g.setTransform(dpr,0,0,dpr,0,0);
+  g.clearRect(0,0,w,h);
+  const pad = {l:30,r:8,t:8,b:16};
+  const all = series.flatMap(s=>s.y.filter(v=>v!==null&&isFinite(v)));
+  const ymax = opts.ymax || Math.max(1, ...all)*1.15;
+  const xmax = opts.xmax || Math.max(...series.map(s=>s.y.length-1),1);
+  const X = i => pad.l + (w-pad.l-pad.r) * (i/Math.max(xmax,1));
+  const Y = v => h-pad.b - (h-pad.t-pad.b) * (v/ymax);
+  // 网格
+  g.strokeStyle='#1b2c46'; g.fillStyle='#7d93ae'; g.font='10px ui-monospace,Consolas';
+  for(let k=0;k<=2;k++){
+    const v = ymax*k/2, y=Y(v);
+    g.beginPath(); g.moveTo(pad.l,y); g.lineTo(w-pad.r,y); g.stroke();
+    g.fillText(v.toFixed(1), 2, y+3);
+  }
+  (opts.hlines||[]).forEach(hl=>{
+    g.strokeStyle=hl.color; g.setLineDash([4,4]); g.beginPath();
+    g.moveTo(pad.l,Y(hl.v)); g.lineTo(w-pad.r,Y(hl.v)); g.stroke(); g.setLineDash([]);
+  });
+  series.forEach(s=>{
+    g.strokeStyle = s.color; g.lineWidth = s.w||1.6; g.beginPath();
+    let started=false;
+    s.y.forEach((v,i)=>{
+      if(v===null||!isFinite(v)) return;
+      const x=X(i), y=Y(v);
+      started? g.lineTo(x,y) : (g.moveTo(x,y), started=true);
+    });
+    g.stroke();
+  });
+  g.fillStyle='#7d93ae';
+  g.fillText('0', pad.l-3, h-4); g.fillText(String(Math.round(xmax)), w-pad.r-16, h-4);
+}
+function renderCharts(){
+  const cl = currentCenterline();
+  const gt = DATA.gt;
+  // 宽度剖面：把估计宽度按归一化弧长重采样，方便两条曲线对比
+  const n = 120;
+  const resample = (y, m) => {
+    const out = [];
+    for(let i=0;i<n;i++){
+      const p = i/(n-1)*(y.length-1);
+      const a = Math.floor(p), b = Math.min(y.length-1, a+1);
+      out.push(y[a]*(1-(p-a)) + y[b]*(p-a));
+    }
+    return out;
+  };
+  const gtW = resample(gt.width, n), estW = cl.w && cl.w.length ? resample(cl.w, n) : null;
+  drawChart('wcv', [
+    {y:gtW, color:'#8fa6c2', w:1.4},
+    estW? {y:estW, color:'#2dd4bf', w:1.8} : {y:[], color:'#2dd4bf'}
+  ], {ymax: Math.max(12, Math.max(...gtW)*1.2)});
+  const err = cl.err && cl.err.length ? resample(cl.err, n) : null;
+  drawChart('ecv', err? [{y:err, color:'#fb923c', w:1.8}] : [{y:[], color:'#fb923c'}],
+    {ymax: Math.max(4, Math.max(...(err||[1]))*1.15),
+     hlines:[{v:2,color:'#4ade80'},{v:5,color:'#f87171'}]});
+}
+
+/* ---------------- 交互 ---------------- */
+function syncMethod(){
+  document.getElementById('mB').classList.toggle('on', S.method==='B');
+  document.getElementById('mA').classList.toggle('on', S.method==='A');
+  document.getElementById('rWrap').style.display = S.method==='A' ? 'block':'none';
+  document.getElementById('methodNote').textContent = S.method==='B'
+    ? '几何一致性判断：只把"像同一条河"的碎片接起来，干扰形状即使贴着河岸也不会被并进来。'
+    : '先膨胀再腐蚀把断裂糊住，再做形状筛选。实现最简单，但因为"一视同仁地糊"，近处干扰会被一起并入，半径越大越严重。';
+}
+document.getElementById('mB').onclick = ()=>{ S.method='B'; syncMethod(); renderKPI(); draw(); };
+document.getElementById('mA').onclick = ()=>{ S.method='A'; syncMethod(); renderKPI(); renderCharts(); draw(); };
+document.getElementById('rSlider').oninput = e=>{
+  S.r = +e.target.value; document.getElementById('rVal').textContent = S.r;
+  renderKPI(); renderCharts(); draw();
+};
+document.getElementById('zoom').oninput = e=>{
+  S.zoom = +e.target.value; resizeView();
+};
+function resizeView(){
+  sizeCanvas();
+  const host = document.getElementById('stage');
+  host.style.width = '100%';
+  cv.style.width = cv.width+'px';
+  host.style.overflow = 'auto';
+  draw();
+}
+document.getElementById('btnFit').onclick = ()=>{
+  const host = document.getElementById('stage');
+  const z = Math.max(1, Math.floor((host.clientWidth-4)/W));
+  S.zoom = Math.min(9, z); document.getElementById('zoom').value = S.zoom;
+  pan = {x:0,y:0}; draw();
+};
+document.getElementById('btnReset').onclick = ()=>{
+  S.zoom = 3; document.getElementById('zoom').value = 3; pan={x:0,y:0}; draw();
+};
+document.getElementById('btnPng').onclick = ()=>{
+  const a = document.createElement('a');
+  a.href = cv.toDataURL('image/png');
+  a.download = 'river-repair-stage'+S.stage+'.png'; a.click();
+};
+document.getElementById('btnPrev').onclick = ()=>{ setStage(S.stage-1); };
+document.getElementById('btnNext').onclick = ()=>{ setStage(S.stage+1); };
+let timer=null;
+document.getElementById('btnPlay').onclick = ()=>{
+  const b = document.getElementById('btnPlay');
+  if(S.playing){ clearInterval(timer); S.playing=false; b.textContent='▶ 播放全过程'; return; }
+  S.playing=true; b.textContent='⏸ 暂停';
+  setStage(0);
+  timer = setInterval(()=>{
+    if(S.stage>=7){ clearInterval(timer); S.playing=false; b.textContent='▶ 播放全过程'; return; }
+    setStage(S.stage+1);
+  }, 1200);
+};
+cv.onmousedown = e=>{ dragging=true; dragStart={x:e.offsetX-pan.x,y:e.offsetY-pan.y}; };
+window.addEventListener('mouseup', ()=> dragging=false);
+cv.onmousemove = e=>{
+  if(dragging && dragStart){ pan = {x:e.offsetX-dragStart.x, y:e.offsetY-dragStart.y}; draw(); }
+  const gx = Math.floor((e.offsetX-pan.x)/S.zoom), gy = Math.floor((e.offsetY-pan.y)/S.zoom);
+  if(gx<0||gy<0||gx>=W||gy>=H){ return; }
+  const id = fragIds()[gy*W+gx];
+  const f = DATA.frags.find(v=>v.id===id);
+  S.hover = {gx,gy,id,f};
+  const st = STAGES[S.stage];
+  document.getElementById('hud').textContent =
+    `阶段 ${st.n}/${STAGES.length-1}  ${st.t}\n像素 (${gx}, ${gy})` +
+    (id ? `  碎片#${id} ${f? (f.role==='chain'?'河流碎片':(f.role==='noise'?'噪声':f.kind)) : ''}` : '  背景');
+};
+cv.onwheel = e=>{
+  e.preventDefault();
+  S.zoom = Math.max(1, Math.min(9, S.zoom + (e.deltaY<0?1:-1)));
+  document.getElementById('zoom').value = S.zoom;
+  draw();
+};
+
+/* ---------------- 启动 ---------------- */
+function boot(){
+  document.getElementById('tagScene').textContent =
+    `场景 ${W}×${H} · 输入连通域 ${DATA.meta.n_input_comp} · 河流被切成 ${DATA.meta.n_breaks+1} 段 · 缝宽 5~11px`;
+  renderLayers(); renderSteps(); renderKPI(); renderFragTable(); renderLinks();
+  renderParams(); renderLegend(); syncMethod(); renderCharts();
+  document.getElementById('btnFit').click();
+  setStage(7);
+  document.title = 'OK · 断裂长条形状修复与中心线提取';
+}
+try { boot(); } catch(e){
+  document.title = 'JS-ERROR: ' + (e && e.message ? e.message : e);
+  console.error(e);
+}
+</script>
+</body>
+</html>

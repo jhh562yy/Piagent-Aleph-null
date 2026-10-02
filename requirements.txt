@@ -1,0 +1,27 @@
+# PI Studio / pi-ai-base —— 依赖清单
+# ================================================================
+# 【核心应用 app/ ：零 pip 依赖】
+#   app/ 下的引擎与服务只用 Python 标准库
+#   （json / os / re / urllib / http.server / sqlite3 / tkinter / threading …），
+#   内置便携运行时 runtime/python（CPython 3.11.15，含 tkinter/tcl）即可直接启动：
+#       app\PiStudio.cmd        原生桌面版
+#       app\PiStudio-Web.cmd    本地网页版（仅绑 127.0.0.1）
+#       app\PiStudio-Debug.cmd  诊断版（--selftest / --probe / --ask）
+#   因此：想跑主程序，本文件可以完全不管。
+#
+# 【可选依赖：仅仓库内的可视化 / 制图 / 校验脚本需要】
+#   安装：  pip install -r requirements.txt
+#   要求：  Python 3.8+（本仓实测环境 3.11.15；版本号为实测可用版本）
+# ================================================================
+
+# —— 硬依赖：river-centerline/ 河道中心线提取、演示数据生成与自检 ——
+#   直接 import：river_repair.py:35、river_scene.py:22、build_demo.py:14、run_check.py
+#   Pillow 亦被 pelican-gif/（make_gif.py:4、check_motion.py、verify_gif.py）使用
+numpy==2.4.3
+pillow==12.2.0
+
+# —— 可选依赖：缺失会自动降级，不影响运行 ——
+#   river_repair.py:159-165 以 try/except 可选导入，用于加速/更平滑的形态学处理
+#   若要完整复现 qgis/README 所述效果再装：
+# scipy==1.17.1
+# opencv-python==5.0.0.93

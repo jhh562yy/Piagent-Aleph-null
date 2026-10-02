@@ -1,0 +1,102 @@
+{
+  "_comment": [
+    "PI Studio 配置模板（脱敏）。真实配置读取路径：~/.pistudio/config.json",
+    "Windows 即 C:\\Users\\<你的用户名>\\.pistudio\\config.json",
+    "用法：复制本文件为 config.json 放到上述目录，填好 provider.api_key 与 model 即可。",
+    "字段与 app/piengine.py 的 DEFAULT_CONFIG（piengine.py:207-244）一致；",
+    "缺失字段会自动用默认值补齐（_merge），因此可以只保留你要改的字段。",
+    "注意：本文件不含任何真实密钥，切勿把填好密钥的 config.json 提交进仓库。"
+  ],
+  "provider": {
+    "name": "DeepSeek",
+    "kind": "openai",
+    "base_url": "https://api.deepseek.com/v1",
+    "api_key": "在此填入你的 API Key",
+    "model": "deepseek-chat",
+    "models": [],
+    "model_meta": {},
+    "customHeaders": []
+  },
+  "profiles": [
+    {
+      "name": "Ollama (本机)",
+      "kind": "openai",
+      "base_url": "http://localhost:11434/v1",
+      "api_key": "",
+      "model": ""
+    },
+    {
+      "name": "LM Studio (本机)",
+      "kind": "openai",
+      "base_url": "http://localhost:1234/v1",
+      "api_key": "",
+      "model": ""
+    },
+    {
+      "name": "vLLM / llama.cpp (本机)",
+      "kind": "openai",
+      "base_url": "http://localhost:8000/v1",
+      "api_key": "",
+      "model": ""
+    },
+    {
+      "name": "OpenAI",
+      "kind": "openai",
+      "base_url": "https://api.openai.com/v1",
+      "api_key": "",
+      "model": "gpt-4o-mini"
+    },
+    {
+      "name": "DeepSeek",
+      "kind": "openai",
+      "base_url": "https://api.deepseek.com/v1",
+      "api_key": "",
+      "model": "deepseek-chat"
+    },
+    {
+      "name": "Moonshot Kimi",
+      "kind": "openai",
+      "base_url": "https://api.moonshot.cn/v1",
+      "api_key": "",
+      "model": "moonshot-v1-8k"
+    },
+    {
+      "name": "智谱 GLM",
+      "kind": "openai",
+      "base_url": "https://open.bigmodel.cn/api/paas/v4",
+      "api_key": "",
+      "model": "glm-4-flash"
+    },
+    {
+      "name": "硅基流动",
+      "kind": "openai",
+      "base_url": "https://api.siliconflow.cn/v1",
+      "api_key": "",
+      "model": "Qwen/Qwen2.5-7B-Instruct"
+    }
+  ],
+  "workspace": "C:\\Users\\<你的用户名>",
+  "prefs": {
+    "temperature": 0.7,
+    "max_steps": 40,
+    "approve_mutating": true,
+    "timeout": 180,
+    "shell_timeout": 60,
+    "enable_tools": true,
+    "theme": "dark",
+    "accent": "#5b8cff",
+    "sandbox": true,
+    "proxy": "",
+    "retries": 2,
+    "auto_title": true,
+    "auto_compact": true,
+    "max_output_tokens": 0,
+    "price_in": 0.0,
+    "price_out": 0.0,
+    "keep_checkpoints": 200,
+    "auto_continue": false,
+    "auto_segments": 4,
+    "policy_auto": false,
+    "system": "你是 PI Studio 的本地代理。需要事实时先调用工具获取；写入与执行类操作前会请求用户审批。"
+  }
+}

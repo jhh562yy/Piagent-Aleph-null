@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>每日热点榜 · 展示页</title>
+<style>
+  :root{
+    --bg:#0a0e1a; --bg2:#0f1424; --card:#151b2e; --card2:#1b2238;
+    --line:#26304d; --fg:#e8edf7; --dim:#8f9dbd; --accent:#4f9cf9;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(1200px 600px at 15% -10%,#16224a 0%,var(--bg) 55%);
+       color:var(--fg);font:14px/1.6 "Segoe UI","Microsoft YaHei",system-ui,sans-serif;min-height:100vh}
+  .wrap{max-width:1240px;margin:0 auto;padding:28px 20px 60px}
+  header{display:flex;flex-wrap:wrap;align-items:flex-end;gap:14px;margin-bottom:8px}
+  h1{margin:0;font-size:26px;letter-spacing:.5px}
+  h1 .dot{color:var(--accent)}
+  .meta{color:var(--dim);font-size:13px;margin-left:auto;text-align:right}
+  .meta b{color:var(--fg);font-weight:600}
+  .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:16px 0 20px}
+  .tab{padding:7px 14px;border-radius:999px;border:1px solid var(--line);background:var(--card);
+       color:var(--dim);cursor:pointer;font-size:13px;transition:.15s;user-select:none}
+  .tab:hover{border-color:var(--accent);color:var(--fg)}
+  .tab.on{background:linear-gradient(135deg,#2f6fd0,#4f9cf9);border-color:transparent;color:#fff;
+          box-shadow:0 4px 18px rgba(79,156,249,.35)}
+  .tab .n{opacity:.7;font-size:11px;margin-left:4px}
+  .spacer{flex:1}
+  button.ref{background:var(--card);border:1px solid var(--line);color:var(--fg);padding:8px 16px;
+             border-radius:8px;cursor:pointer;font-size:13px;transition:.15s}
+  button.ref:hover{border-color:var(--accent);background:var(--card2)}
+  button.ref:disabled{opacity:.5;cursor:progess}
+  .grid{display:grid;gap:18px;grid-template-columns:repeat(auto-fill,minmax(340px,1fr))}
+  .card{background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);border:1px solid var(--line);
+        border-radius:14px;overflow:hidden;box-shadow:0 8px 26px rgba(0,0,0,.28)}
+  .card h2{margin:0;padding:13px 16px;font-size:15px;display:flex;align-items:center;gap:8px;
+           border-bottom:1px solid var(--line)}
+  .card h2 .badge{width:8px;height:8px;border-radius:50%}
+  .card h2 .cnt{margin-left:auto;color:var(--dim);font-size:12px;font-weight:400}
+  .card .tip{padding:8px 16px;color:var(--dim);font-size:12px;border-bottom:1px dashed var(--line)}
+  ol{margin:0;padding:6px 0;list-style:none;counter-reset:r}
+  li{display:flex;gap:10px;padding:8px 16px;border-bottom:1px solid rgba(38,48,77,.45);
+     align-items:flex-start;transition:.12s}
+  li:last-child{border-bottom:0}
+  li:hover{background:rgba(79,156,249,.08)}
+  .rk{flex:none;min-width:24px;height:22px;padding:0 6px;border-radius:6px;display:inline-flex;
+      align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#9fb6de;
+      background:rgba(143,157,189,.12);margin-top:1px}
+  .rk.top1{background:linear-gradient(135deg,#ff8a3d,#ffb347);color:#2a1600}
+  .rk.top2{background:linear-gradient(135deg,#a8b4c8,#d6dde8);color:#20293a}
+  .rk.top3{background:linear-gradient(135deg,#c98a4b,#e0a86b);color:#2a1b08}
+  .rk.pin{background:rgba(255,90,110,.18);color:#ff8095}
+  .ti{flex:1;min-width:0}
+  .ti a{color:var(--fg);text-decoration:none;word-break:break-word}
+  .ti a:hover{color:var(--accent);text-decoration:underline}
+  .ex{display:block;color:var(--dim);font-size:12px;margin-top:2px;overflow:hidden;
+      text-overflow:ellipsis;white-space:nowrap}
+  .hot{flex:none;font-size:12px;color:#ffb46b;font-variant-numeric:tabular-nums;margin-top:2px;
+       white-space:nowrap}
+  .fail{border-color:#5a2530;background:linear-gradient(180deg,#251420,#1e1018)}
+  .fail .msg{padding:12px 16px;color:#ff9fb0;font-size:13px;word-break:break-word}
+  .empty{text-align:center;color:var(--dim);padding:60px 20px}
+  .empty code{background:#111827;padding:2px 8px;border-radius:6px;color:#ffd479}
+  footer{margin-top:26px;color:var(--dim);font-size:12px;text-align:center}
+  footer a{color:var(--accent);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>每日热点榜<span class="dot"> · </span>实时聚合</h1>
+    <div class="meta">
+      抓取时间 <b id="fetched">—</b><br>
+      来源 <b id="stat">—</b>
+    </div>
+  </header>
+
+  <div class="bar" id="bar">
+    <div class="spacer"></div>
+    <button class="ref" id="refresh">↻ 刷新数据</button>
+  </div>
+
+  <div id="board"><div class="empty">正在加载数据…</div></div>
+
+  <footer>
+    数据源：百度热搜 / 今日头条 / 抖音热点 / 贴吧热议 / B站热门 / GitHub ·
+    由 <a href="../../app/hot_board.py">app/hot_board.py</a> 抓取落盘，本页只做展示
+  </footer>
+</div>
+
+<script>
+const COLORS = {baidu:"#3b82f6",toutiao:"#ef4444",douyin:"#f43f5e",
+                tieba:"#22c55e",bili:"#fb7299",github:"#a78bfa"};
+let DATA = null, cur = "all";
+
+function num(v){
+  const n = Number(String(v||"").replace(/,/g,""));
+  if(!isFinite(n) || !n) return "";
+  if(n>=1e8) return (n/1e8).toFixed(2)+"亿";
+  if(n>=1e4) return (n/1e4).toFixed(1)+"万";
+  return String(n);
+}
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+
+function loadScript(cb){
+  const s = document.createElement("script");
+  s.src = "hot-topics.js?t=" + Date.now();
+  s.onload = () => cb(window.HOT_DATA || null);
+  s.onerror = () => cb(null);
+  document.head.appendChild(s);
+}
+
+function render(){
+  const board = document.getElementById("board");
+  if(!DATA || !(DATA.sources||[]).length){
+    board.innerHTML = '<div class="empty">暂无数据。<br>请先运行 <code>python app/hot_board.py</code> 生成榜单，或点击右上角「刷新数据」。</div>';
+    document.getElementById("fetched").textContent = "—";
+    document.getElementById("stat").textContent = "—";
+    return;
+  }
+  document.getElementById("fetched").textContent = DATA.fetched_at || DATA.generated || "—";
+  document.getElementById("stat").textContent =
+    (DATA.ok_count||0) + " 个成功" + (DATA.fail_count ? " / " + DATA.fail_count + " 个失败" : "");
+
+  // tabs
+  const bar = document.getElementById("bar");
+  bar.querySelectorAll(".tab").forEach(e=>e.remove());
+  const mk = (key,label,n)=>{
+    const d = document.createElement("div");
+    d.className = "tab" + (cur===key ? " on" : "");
+    d.innerHTML = esc(label) + '<span class="n">' + n + "</span>";
+    d.onclick = ()=>{cur = key; render();};
+    return d;
+  };
+  const allN = (DATA.sources||[]).reduce((a,s)=>a+(s.count||0),0);
+  bar.insertBefore(mk("all","全部",allN), bar.firstChild);
+  (DATA.sources||[]).forEach(s=>{ if(s.ok) bar.insertBefore(mk(s.source,s.label,s.count||0), bar.firstChild.nextSibling); });
+
+  const list = (DATA.sources||[]).filter(s => cur==="all" || s.source===cur);
+  board.innerHTML = '<div class="grid"></div>';
+  const grid = board.firstChild;
+
+  list.forEach(s=>{
+    const card = document.createElement("div");
+    card.className = "card" + (s.ok ? "" : " fail");
+    const c = COLORS[s.source] || "#4f9cf9";
+    if(!s.ok){
+      card.innerHTML = '<h2><span class="badge" style="background:#ff5a6e"></span>' + esc(s.label) +
+        '</h2><div class="tip">该源抓取失败</div><div class="msg">' + esc(s.error || "未知错误") + "</div>";
+      grid.appendChild(card);
+      return;
+    }
+    let html = '<h2><span class="badge" style="background:' + c + '"></span>' + esc(s.label) +
+               '<span class="cnt">' + (s.count||0) + ' 条</span></h2>';
+    if(s.tip) html += '<div class="tip">' + esc(s.tip) + "</div>";
+    html += "<ol>";
+    (s.items||[]).forEach(it=>{
+      const pinned = !it.rank || it.rank<=0;
+      const cls = pinned ? "rk pin" : (it.rank<=3 ? "rk top" + it.rank : "rk");
+      const rk  = pinned ? "置顶" : it.rank;
+      const hot = num(it.hot) || "";
+      const title = it.url
+        ? '<a href="' + esc(it.url) + '" target="_blank" rel="noreferrer">' + esc(it.title) + "</a>"
+        : esc(it.title);
+      html += '<li><span class="' + cls + '">' + esc(rk) + '</span><span class="ti">' + title +
+              (it.extra ? '<span class="ex">' + esc(it.extra) + "</span>" : "") + "</span>" +
+              (hot ? '<span class="hot">' + esc(hot) + "</span>" : "") + "</li>";
+    });
+    html += "</ol>";
+    card.innerHTML = html;
+    grid.appendChild(card);
+  });
+}
+
+function boot(){
+  loadScript(d=>{ DATA = d; render(); });
+}
+document.getElementById("refresh").onclick = function(){
+  this.disabled = true; const b = this; b.textContent = "抓取中…";
+  boot();
+  setTimeout(()=>{b.disabled=false;b.textContent="↻ 刷新数据";}, 1500);
+};
+boot();
+setInterval(boot, 300000);   // 每 5 分钟自动重载数据文件
+</script>
+</body>
+</html>
